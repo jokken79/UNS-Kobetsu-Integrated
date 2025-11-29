@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from .kobetsu import router as kobetsu_router
 from .auth import router as auth_router
 from .factories import router as factories_router
+from .companies import router as companies_router
 from .employees import router as employees_router
 from .imports import router as imports_router
 from .documents import router as documents_router
@@ -32,6 +33,12 @@ api_router.include_router(
     factories_router,
     prefix="/factories",
     tags=["Factories (派遣先/工場)"]
+)
+
+api_router.include_router(
+    companies_router,
+    prefix="",
+    tags=["Companies & Plants (Base Madre)"]
 )
 
 api_router.include_router(

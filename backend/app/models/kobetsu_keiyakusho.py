@@ -30,6 +30,10 @@ class KobetsuKeiyakusho(Base):
     # ========================================
     factory_id = Column(Integer, ForeignKey('factories.id', ondelete='CASCADE'), nullable=False, index=True)
     dispatch_assignment_id = Column(Integer, ForeignKey('dispatch_assignments.id', ondelete='SET NULL'), nullable=True)
+
+    # New: Base Madre references (added in migration 002)
+    company_id = Column(Integer, ForeignKey('companies.company_id', ondelete='SET NULL'), nullable=True, index=True)
+    plant_id = Column(Integer, ForeignKey('plants.plant_id', ondelete='SET NULL'), nullable=True, index=True)
     
     # ========================================
     # 基本情報 (Información Básica)
@@ -154,6 +158,10 @@ class KobetsuKeiyakusho(Base):
     dispatch_assignment = relationship("DispatchAssignment", back_populates="kobetsu_contracts")
     employees = relationship("KobetsuEmployee", back_populates="kobetsu_keiyakusho", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
+
+    # New: Base Madre relationships
+    company = relationship("Company", back_populates="kobetsu_contracts")
+    plant = relationship("Plant", back_populates="kobetsu_contracts")
     
     # ========================================
     # TABLE CONSTRAINTS
