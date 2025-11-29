@@ -77,7 +77,7 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
             // Keep undefined to force user selection
         }
       } catch (err) {
-        console.error('Failed to load factories', err)
+        // Failed to load factories - error handled silently
       } finally {
         setLoadingFactories(false)
       }
@@ -93,7 +93,7 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
         const data = await employeeApi.getList({ limit: 1000 })
         setEmployees(data)
       } catch (err) {
-        console.error('Failed to load employees', err)
+        // Failed to load employees - error handled silently
       } finally {
         setLoadingEmployees(false)
       }
@@ -158,7 +158,7 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
             }
         }))
     } catch (err) {
-        console.error('Failed to load factory details', err)
+        // Failed to load factory details - error handled silently
     }
   }
 

@@ -9,9 +9,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import check_db_connection
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.api.v1 import api_router
 
 
@@ -62,11 +64,17 @@ specifically Article 26 which requires 16 specific items in individual contracts
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.CORS_ORIGINS,  # Only configured origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicit methods
+    allow_headers=["Authorization", "Content-Type", "Accept"],  # Specific headers
+    expose_headers=["Content-Disposition", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],  # For file downloads and rate limit info
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
+
+# Add rate limiter to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
 # Global exception handler
@@ -88,7 +96,8 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 # Root endpoint
 @app.get("/", tags=["Root"])
-async def root():
+@limiter.limit("200 per minute")
+async def root(request: Request):
     """Root endpoint with API information."""
     return {
         "name": settings.APP_NAME,
@@ -101,7 +110,8 @@ async def root():
 
 # Health check endpoint
 @app.get("/health", tags=["Health"])
-async def health_check():
+@limiter.limit("1000 per minute")  # Very permissive for health checks
+async def health_check(request: Request):
     """Health check endpoint for container orchestration."""
     db_healthy = check_db_connection()
 
@@ -114,7 +124,8 @@ async def health_check():
 
 # Ready check endpoint
 @app.get("/ready", tags=["Health"])
-async def readiness_check():
+@limiter.limit("1000 per minute")  # Very permissive for health checks
+async def readiness_check(request: Request):
     """Readiness check for load balancers."""
     db_healthy = check_db_connection()
 

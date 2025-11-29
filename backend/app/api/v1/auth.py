@@ -5,7 +5,7 @@ Handles login, token refresh, and user management.
 from datetime import timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from app.core.security import (
     get_current_user,
 )
 from app.core.config import settings
+from app.core.rate_limit import limiter, RateLimits
 from app.models.user import User
 
 router = APIRouter()
@@ -72,7 +73,8 @@ def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
 
 
 @router.post("/login", response_model=Token)
-async def login(request: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit(RateLimits.AUTH_LOGIN)
+async def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
     """
     Authenticate user and return JWT tokens.
 
@@ -82,7 +84,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
     Returns access and refresh tokens on successful authentication.
     """
     # Check if user exists in database
-    user = get_user_by_email(db, request.email)
+    user = get_user_by_email(db, login_data.email)
 
     if not user:
         raise HTTPException(
@@ -92,7 +94,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
 
     # Verify password
-    if not verify_password(request.password, user.hashed_password):
+    if not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -123,7 +125,8 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(request: RefreshRequest):
+@limiter.limit(RateLimits.AUTH_REFRESH)
+async def refresh_token(request: Request, refresh_data: RefreshRequest):
     """
     Refresh access token using refresh token.
 
@@ -132,7 +135,7 @@ async def refresh_token(request: RefreshRequest):
     Returns new access and refresh tokens.
     """
     # Verify refresh token
-    token_data = verify_token(request.refresh_token, token_type="refresh")
+    token_data = verify_token(refresh_data.refresh_token, token_type="refresh")
 
     # Create new tokens (sub must be a string per JWT spec)
     new_token_data = {
@@ -179,7 +182,8 @@ async def get_current_user_info(
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit(RateLimits.AUTH_REGISTER)
+async def register_user(request: Request, register_data: RegisterRequest, db: Session = Depends(get_db)):
     """
     Register a new user.
 
@@ -191,7 +195,7 @@ async def register_user(request: RegisterRequest, db: Session = Depends(get_db))
     Note: In production, this endpoint should be admin-only or have email verification.
     """
     # Check if user already exists in database
-    existing_user = get_user_by_email(db, request.email)
+    existing_user = get_user_by_email(db, register_data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -199,7 +203,7 @@ async def register_user(request: RegisterRequest, db: Session = Depends(get_db))
         )
 
     # Validate password strength
-    if len(request.password) < 8:
+    if len(register_data.password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters",
@@ -207,10 +211,10 @@ async def register_user(request: RegisterRequest, db: Session = Depends(get_db))
 
     # Create user in database
     new_user = User(
-        email=request.email,
-        full_name=request.full_name,
-        hashed_password=get_password_hash(request.password),
-        role=request.role,
+        email=register_data.email,
+        full_name=register_data.full_name,
+        hashed_password=get_password_hash(register_data.password),
+        role=register_data.role,
         is_active=True,
     )
     db.add(new_user)

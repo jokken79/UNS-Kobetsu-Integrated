@@ -4,9 +4,28 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { kobetsuApi } from '@/lib/api'
-import { KobetsuTable } from '@/components/kobetsu/KobetsuTable'
-import { KobetsuStats } from '@/components/kobetsu/KobetsuStats'
+
+// Lazy load heavy components
+const KobetsuTable = dynamic(() => import('@/components/kobetsu/KobetsuTable').then(mod => mod.KobetsuTable), {
+  loading: () => (
+    <div className="p-12 text-center">
+      <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+      <p className="text-gray-500">テーブルを読み込み中...</p>
+    </div>
+  ),
+})
+
+const KobetsuStats = dynamic(() => import('@/components/kobetsu/KobetsuStats').then(mod => mod.KobetsuStats), {
+  loading: () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 animate-pulse">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="bg-gray-100 rounded-lg h-24"></div>
+      ))}
+    </div>
+  ),
+})
 
 export default function KobetsuListPage() {
   const router = useRouter()

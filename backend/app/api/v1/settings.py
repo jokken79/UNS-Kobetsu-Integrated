@@ -6,11 +6,12 @@ Editable settings are stored in a JSON file.
 """
 import json
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.core.config import settings
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -193,7 +194,7 @@ async def get_form_defaults():
 
 
 @router.put("/form-defaults", response_model=UNSFormDefaults)
-async def update_form_defaults(defaults: UNSFormDefaults):
+async def update_form_defaults(defaults: UNSFormDefaults, current_user: dict = Depends(get_current_user)):
     """
     Update UNS company defaults for contract forms.
 

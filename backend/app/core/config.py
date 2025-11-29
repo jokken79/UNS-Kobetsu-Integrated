@@ -49,7 +49,7 @@ class Settings(BaseSettings):
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
     # JWT Authentication
-    JWT_SECRET_KEY: str = "your-super-secret-key-change-in-production"
+    JWT_SECRET_KEY: str = "uns-kobetsu-local-dev-secret-key-2024-do-not-use-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7

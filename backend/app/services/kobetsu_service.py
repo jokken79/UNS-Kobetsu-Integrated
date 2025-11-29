@@ -136,7 +136,7 @@ class KobetsuService:
 
     def get_by_id(self, contract_id: int) -> Optional[KobetsuKeiyakusho]:
         """
-        Get a contract by ID.
+        Get a contract by ID with eager loading.
 
         Args:
             contract_id: Contract ID
@@ -146,13 +146,17 @@ class KobetsuService:
         """
         return (
             self.db.query(KobetsuKeiyakusho)
+            .options(
+                joinedload(KobetsuKeiyakusho.factory),
+                joinedload(KobetsuKeiyakusho.employees)
+            )
             .filter(KobetsuKeiyakusho.id == contract_id)
             .first()
         )
 
     def get_by_contract_number(self, contract_number: str) -> Optional[KobetsuKeiyakusho]:
         """
-        Get a contract by contract number.
+        Get a contract by contract number with eager loading.
 
         Args:
             contract_number: Contract number (e.g., KOB-202411-0001)
@@ -162,6 +166,10 @@ class KobetsuService:
         """
         return (
             self.db.query(KobetsuKeiyakusho)
+            .options(
+                joinedload(KobetsuKeiyakusho.factory),
+                joinedload(KobetsuKeiyakusho.employees)
+            )
             .filter(KobetsuKeiyakusho.contract_number == contract_number)
             .first()
         )
@@ -195,7 +203,9 @@ class KobetsuService:
         Returns:
             Tuple of (list of contracts, total count)
         """
-        query = self.db.query(KobetsuKeiyakusho)
+        query = self.db.query(KobetsuKeiyakusho).options(
+            joinedload(KobetsuKeiyakusho.factory)
+        )
 
         # Apply filters
         if status:
@@ -304,7 +314,7 @@ class KobetsuService:
 
         # Delete employee associations first
         self.db.query(KobetsuEmployee).filter(
-            KobetsuEmployee.kobetsu_id == contract_id
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
         ).delete()
 
         # Delete the contract
@@ -432,64 +442,88 @@ class KobetsuService:
         Returns:
             KobetsuKeiyakushoStats instance
         """
-        query = self.db.query(KobetsuKeiyakusho)
+        from sqlalchemy import case
 
+        # Build base query with optional factory filter
+        base_query = self.db.query(KobetsuKeiyakusho)
         if factory_id:
-            query = query.filter(KobetsuKeiyakusho.factory_id == factory_id)
+            base_query = base_query.filter(KobetsuKeiyakusho.factory_id == factory_id)
 
-        total_contracts = query.count()
-
-        active_contracts = query.filter(
-            KobetsuKeiyakusho.status == "active"
-        ).count()
-
-        # Expiring in 30 days
+        # Single optimized query using CASE statements
         thirty_days_later = date.today() + timedelta(days=30)
-        expiring_soon = query.filter(
-            and_(
-                KobetsuKeiyakusho.status == "active",
-                KobetsuKeiyakusho.dispatch_end_date <= thirty_days_later,
-                KobetsuKeiyakusho.dispatch_end_date >= date.today(),
-            )
-        ).count()
+        today = date.today()
 
-        expired_contracts = query.filter(
-            KobetsuKeiyakusho.status == "expired"
-        ).count()
-
-        draft_contracts = query.filter(
-            KobetsuKeiyakusho.status == "draft"
-        ).count()
-
-        # Total workers in active contracts
-        total_workers = (
-            query.filter(KobetsuKeiyakusho.status == "active")
-            .with_entities(func.sum(KobetsuKeiyakusho.number_of_workers))
-            .scalar() or 0
-        )
+        stats = base_query.with_entities(
+            func.count(KobetsuKeiyakusho.id).label("total_contracts"),
+            func.sum(
+                case(
+                    (KobetsuKeiyakusho.status == "active", 1),
+                    else_=0
+                )
+            ).label("active_contracts"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            KobetsuKeiyakusho.status == "active",
+                            KobetsuKeiyakusho.dispatch_end_date <= thirty_days_later,
+                            KobetsuKeiyakusho.dispatch_end_date >= today,
+                        ),
+                        1
+                    ),
+                    else_=0
+                )
+            ).label("expiring_soon"),
+            func.sum(
+                case(
+                    (KobetsuKeiyakusho.status == "expired", 1),
+                    else_=0
+                )
+            ).label("expired_contracts"),
+            func.sum(
+                case(
+                    (KobetsuKeiyakusho.status == "draft", 1),
+                    else_=0
+                )
+            ).label("draft_contracts"),
+            func.sum(
+                case(
+                    (KobetsuKeiyakusho.status == "active", KobetsuKeiyakusho.number_of_workers),
+                    else_=0
+                )
+            ).label("total_workers")
+        ).first()
 
         return KobetsuKeiyakushoStats(
-            total_contracts=total_contracts,
-            active_contracts=active_contracts,
-            expiring_soon=expiring_soon,
-            expired_contracts=expired_contracts,
-            draft_contracts=draft_contracts,
-            total_workers=int(total_workers),
+            total_contracts=stats.total_contracts or 0,
+            active_contracts=int(stats.active_contracts or 0),
+            expiring_soon=int(stats.expiring_soon or 0),
+            expired_contracts=int(stats.expired_contracts or 0),
+            draft_contracts=int(stats.draft_contracts or 0),
+            total_workers=int(stats.total_workers or 0),
         )
 
     def get_by_factory(self, factory_id: int) -> List[KobetsuKeiyakusho]:
-        """Get all contracts for a factory."""
+        """Get all contracts for a factory with eager loading."""
         return (
             self.db.query(KobetsuKeiyakusho)
+            .options(
+                joinedload(KobetsuKeiyakusho.factory),
+                joinedload(KobetsuKeiyakusho.employees)
+            )
             .filter(KobetsuKeiyakusho.factory_id == factory_id)
             .order_by(KobetsuKeiyakusho.created_at.desc())
             .all()
         )
 
     def get_by_employee(self, employee_id: int) -> List[KobetsuKeiyakusho]:
-        """Get all contracts for an employee."""
+        """Get all contracts for an employee with eager loading."""
         return (
             self.db.query(KobetsuKeiyakusho)
+            .options(
+                joinedload(KobetsuKeiyakusho.factory),
+                joinedload(KobetsuKeiyakusho.employees)
+            )
             .join(KobetsuEmployee)
             .filter(KobetsuEmployee.employee_id == employee_id)
             .order_by(KobetsuKeiyakusho.created_at.desc())
@@ -497,10 +531,14 @@ class KobetsuService:
         )
 
     def get_expiring_contracts(self, days: int = 30) -> List[KobetsuKeiyakusho]:
-        """Get contracts expiring within specified days."""
+        """Get contracts expiring within specified days with eager loading."""
         threshold = date.today() + timedelta(days=days)
         return (
             self.db.query(KobetsuKeiyakusho)
+            .options(
+                joinedload(KobetsuKeiyakusho.factory),
+                joinedload(KobetsuKeiyakusho.employees)
+            )
             .filter(
                 and_(
                     KobetsuKeiyakusho.status == "active",
@@ -585,7 +623,7 @@ class KobetsuService:
             self.db.query(KobetsuEmployee)
             .filter(
                 and_(
-                    KobetsuEmployee.kobetsu_id == contract_id,
+                    KobetsuEmployee.kobetsu_keiyakusho_id == contract_id,
                     KobetsuEmployee.employee_id == employee_id,
                 )
             )
@@ -596,7 +634,7 @@ class KobetsuService:
             return False
 
         employee_link = KobetsuEmployee(
-            kobetsu_id=contract_id,
+            kobetsu_keiyakusho_id=contract_id,
             employee_id=employee_id,
         )
         self.db.add(employee_link)
@@ -631,7 +669,7 @@ class KobetsuService:
             self.db.query(KobetsuEmployee)
             .filter(
                 and_(
-                    KobetsuEmployee.kobetsu_id == contract_id,
+                    KobetsuEmployee.kobetsu_keiyakusho_id == contract_id,
                     KobetsuEmployee.employee_id == employee_id,
                 )
             )
@@ -658,7 +696,7 @@ class KobetsuService:
         """
         employees = (
             self.db.query(KobetsuEmployee.employee_id)
-            .filter(KobetsuEmployee.kobetsu_id == contract_id)
+            .filter(KobetsuEmployee.kobetsu_keiyakusho_id == contract_id)
             .all()
         )
         return [e[0] for e in employees]

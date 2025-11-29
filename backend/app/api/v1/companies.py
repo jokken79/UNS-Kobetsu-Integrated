@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.models.company import Company
 from app.models.plant import Plant
 from app.models.jigyosho import Jigyosho
@@ -28,7 +29,8 @@ async def list_companies(
     limit: int = Query(100, ge=1, le=500),
     search: Optional[str] = None,
     is_active: Optional[bool] = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Get list of companies.
@@ -99,7 +101,8 @@ async def list_plants(
     company_id: Optional[int] = None,
     search: Optional[str] = None,
     is_active: Optional[bool] = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Get list of plants.
@@ -204,7 +207,8 @@ async def get_company_options(db: Session = Depends(get_db)):
 @router.get("/options/plants", response_model=List[dict])
 async def get_plant_options(
     company_id: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Get simplified list of plants for dropdown options."""
     query = db.query(Plant).options(joinedload(Plant.company)).filter(Plant.is_active == True)

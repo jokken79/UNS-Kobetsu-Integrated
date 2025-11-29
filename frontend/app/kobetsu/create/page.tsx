@@ -4,9 +4,20 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { kobetsuApi } from '@/lib/api'
-import { KobetsuFormHybrid } from '@/components/kobetsu/KobetsuFormHybrid'
 import type { KobetsuCreate } from '@/types'
+
+// Lazy load the heavy form component
+const KobetsuFormHybrid = dynamic(() => import('@/components/kobetsu/KobetsuFormHybrid').then(mod => mod.KobetsuFormHybrid), {
+  loading: () => (
+    <div className="p-8 text-center">
+      <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+      <p className="text-gray-500">フォームを読み込み中...</p>
+    </div>
+  ),
+  ssr: false, // Disable SSR for form to avoid hydration issues
+})
 
 export default function CreateKobetsuPage() {
   const router = useRouter()

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, distinct
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.models.factory import Factory, FactoryLine
 from app.models.employee import Employee
 from app.schemas.factory import (
@@ -33,7 +34,8 @@ async def list_factories(
     search: Optional[str] = None,
     company_name: Optional[str] = None,
     is_active: Optional[bool] = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Get list of factories with optional filters."""
     query = db.query(Factory)
@@ -83,7 +85,8 @@ async def list_factories(
 @router.get("/{factory_id}", response_model=FactoryResponse)
 async def get_factory(
     factory_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Get factory details by ID."""
     factory = db.query(Factory).options(
@@ -110,7 +113,8 @@ async def get_factory(
 @router.post("/", response_model=FactoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_factory(
     factory_data: FactoryCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Create a new factory."""
     # Generate factory_id if not provided
@@ -150,7 +154,8 @@ async def create_factory(
 async def update_factory(
     factory_id: int,
     factory_data: FactoryUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Update a factory."""
     factory = db.query(Factory).filter(Factory.id == factory_id).first()
@@ -174,7 +179,8 @@ async def update_factory(
 @router.delete("/{factory_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_factory(
     factory_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Delete a factory (soft delete by setting is_active=False)."""
     factory = db.query(Factory).filter(Factory.id == factory_id).first()
@@ -197,7 +203,8 @@ async def delete_factory(
 async def list_factory_lines(
     factory_id: int,
     is_active: Optional[bool] = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Get all lines for a factory."""
     factory = db.query(Factory).filter(Factory.id == factory_id).first()
@@ -216,7 +223,8 @@ async def list_factory_lines(
 async def create_factory_line(
     factory_id: int,
     line_data: FactoryLineCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Create a new line for a factory."""
     factory = db.query(Factory).filter(Factory.id == factory_id).first()
@@ -235,7 +243,8 @@ async def create_factory_line(
 async def update_factory_line(
     line_id: int,
     line_data: FactoryLineUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Update a factory line."""
     line = db.query(FactoryLine).filter(FactoryLine.id == line_id).first()
@@ -256,7 +265,8 @@ async def update_factory_line(
 @router.delete("/lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_factory_line(
     line_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Delete a factory line (soft delete)."""
     line = db.query(FactoryLine).filter(FactoryLine.id == line_id).first()
@@ -275,7 +285,8 @@ async def delete_factory_line(
 @router.get("/dropdown/companies", response_model=List[CompanyOption])
 async def get_company_options(
     search: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Step 1: Get unique company names for 派遣先 dropdown.
@@ -299,7 +310,8 @@ async def get_company_options(
 @router.get("/dropdown/plants", response_model=List[PlantOption])
 async def get_plant_options(
     company_name: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Step 2: Get plants/factories for a selected company (工場名 dropdown).
@@ -323,7 +335,8 @@ async def get_plant_options(
 @router.get("/dropdown/departments", response_model=List[DepartmentOption])
 async def get_department_options(
     factory_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Step 3: Get departments for a selected factory (配属先 dropdown).
@@ -347,7 +360,8 @@ async def get_department_options(
 async def get_line_options(
     factory_id: int,
     department: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Step 4: Get lines for a selected factory/department (ライン dropdown).
@@ -378,7 +392,8 @@ async def get_line_options(
 @router.get("/dropdown/cascade/{line_id}", response_model=FactoryCascadeData)
 async def get_cascade_data(
     line_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Get complete factory and line data for a selected line.
@@ -404,7 +419,8 @@ async def get_cascade_data(
 @router.post("/import", response_model=FactoryResponse, status_code=status.HTTP_201_CREATED)
 async def import_factory_from_json(
     import_data: FactoryJSONImport,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Import a factory from JSON structure (matches UNS-ClaudeJP-6.0.0 format).
@@ -497,7 +513,8 @@ async def import_factory_from_json(
 @router.post("/import/bulk", status_code=status.HTTP_201_CREATED)
 async def import_factories_bulk(
     factories: List[FactoryJSONImport],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Bulk import factories from JSON array.

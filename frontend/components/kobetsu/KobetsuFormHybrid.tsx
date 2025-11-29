@@ -80,7 +80,7 @@ export function KobetsuFormHybrid({ initialData, onSubmit, isLoading }: KobetsuF
         const data = await factoryApi.getList({ limit: 100 })
         setFactories(data)
       } catch (err) {
-        console.error('Failed to load factories', err)
+        // Failed to load factories - error handled silently
       } finally {
         setLoadingFactories(false)
       }
@@ -147,7 +147,7 @@ export function KobetsuFormHybrid({ initialData, onSubmit, isLoading }: KobetsuF
         },
       }))
     } catch (err) {
-      console.error('Failed to load factory details', err)
+      // Failed to load factory details - error handled silently
     }
   }
 

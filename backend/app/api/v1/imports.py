@@ -5,12 +5,13 @@ Provides endpoints for importing factories and employees from JSON/Excel files.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limit import limiter, RateLimits
 from app.services.import_service import ImportService
 
 router = APIRouter()
@@ -54,7 +55,9 @@ class ImportResponse(BaseModel):
 # ========================================
 
 @router.post("/factories/preview", response_model=ImportResponse)
+@limiter.limit(RateLimits.IMPORT_PREVIEW)
 async def preview_factory_import(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -89,8 +92,10 @@ async def preview_factory_import(
 
 
 @router.post("/factories/execute", response_model=ImportResponse)
+@limiter.limit(RateLimits.IMPORT_EXECUTE)
 async def execute_factory_import(
-    request: ImportRequest,
+    request: Request,
+    import_data: ImportRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -105,7 +110,7 @@ async def execute_factory_import(
             - "sync": Full sync (update + create)
     """
     service = ImportService(db)
-    result = service.import_factories(request.preview_data, request.mode)
+    result = service.import_factories(import_data.preview_data, import_data.mode)
     return ImportResponse(**result.to_dict())
 
 
@@ -114,7 +119,9 @@ async def execute_factory_import(
 # ========================================
 
 @router.post("/employees/preview", response_model=ImportResponse)
+@limiter.limit(RateLimits.IMPORT_PREVIEW)
 async def preview_employee_import(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -148,8 +155,10 @@ async def preview_employee_import(
 
 
 @router.post("/employees/execute", response_model=ImportResponse)
+@limiter.limit(RateLimits.IMPORT_EXECUTE)
 async def execute_employee_import(
-    request: ImportRequest,
+    request: Request,
+    import_data: ImportRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -164,12 +173,14 @@ async def execute_employee_import(
             - "sync": Create new + update existing (recommended)
     """
     service = ImportService(db)
-    result = service.import_employees(request.preview_data, request.mode)
+    result = service.import_employees(import_data.preview_data, import_data.mode)
     return ImportResponse(**result.to_dict())
 
 
 @router.post("/employees/sync", response_model=ImportResponse)
+@limiter.limit(RateLimits.IMPORT_EXECUTE)
 async def sync_employees_from_excel(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),

@@ -88,7 +88,7 @@ export default function AssignEmployeePage() {
       })
       setEmployees(results)
     } catch (err) {
-      console.error('Failed to search employees:', err)
+      // Failed to search employees - error handled silently
     } finally {
       setLoadingEmployees(false)
     }
@@ -127,7 +127,7 @@ export default function AssignEmployeePage() {
       setCurrentStep(3)
     } catch (err) {
       setError('推奨を取得できませんでした')
-      console.error(err)
+      // Error getting suggestion - already set in state
     } finally {
       setLoadingSuggestion(false)
     }

@@ -34,9 +34,22 @@ export const useAuthStore = create<AuthState>()(
           await authApi.login({ email, password })
           const user = await authApi.getCurrentUser()
           set({ user, isAuthenticated: true, isLoading: false })
-        } catch (error: any) {
+        } catch (error) {
+          let errorMessage = 'ログインに失敗しました'
+
+          if (error instanceof Error) {
+            errorMessage = error.message
+          } else if (
+            typeof error === 'object' &&
+            error !== null &&
+            'response' in error &&
+            typeof (error as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
+          ) {
+            errorMessage = (error as { response: { data: { detail: string } } }).response.data.detail
+          }
+
           set({
-            error: error.response?.data?.detail || 'ログインに失敗しました',
+            error: errorMessage,
             isLoading: false,
           })
           throw error

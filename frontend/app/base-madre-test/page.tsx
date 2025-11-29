@@ -32,7 +32,7 @@ export default function BaseMadreTestPage() {
 
   const handleEmployeeSelect = (employeeId: number, employee: Employee) => {
     setSelectedEmployeeId(employeeId);
-    console.log('Selected employee:', employee);
+    // Employee selected for testing
   };
 
   return (

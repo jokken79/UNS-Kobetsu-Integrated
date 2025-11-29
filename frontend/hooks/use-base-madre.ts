@@ -231,7 +231,7 @@ export function useCompanies(options?: { enabled?: boolean }) {
  * Hook para obtener detalles de una empresa específica
  */
 export function useCompany(id: number | null, options?: { enabled?: boolean }) {
-  const [company, setCompany] = useState<any | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -6,7 +6,10 @@ under 労働者派遣法第26条 (Worker Dispatch Law Article 26).
 
 Provides 24 endpoints for full contract lifecycle management.
 """
+import csv
+import io
 from datetime import date
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
@@ -15,14 +18,25 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role
+from app.models.kobetsu_keiyakusho import KobetsuEmployee
+from app.models.employee import Employee
+from app.models.factory import Factory, FactoryLine
 from app.services.kobetsu_service import KobetsuService
 from app.services.kobetsu_pdf_service import KobetsuPDFService
+from app.services.contract_logic_service import ContractLogicService, ContractValidationError
 from app.schemas.kobetsu_keiyakusho import (
     KobetsuKeiyakushoCreate,
     KobetsuKeiyakushoUpdate,
     KobetsuKeiyakushoResponse,
     KobetsuKeiyakushoList,
     KobetsuKeiyakushoStats,
+)
+from app.api.v1.helpers import (
+    get_contract_or_404,
+    get_employee_or_404,
+    get_factory_or_404,
+    validate_contract_status,
+    validate_date_range,
 )
 
 router = APIRouter(redirect_slashes=False)
@@ -404,10 +418,6 @@ async def get_contract_employees_with_rates(
     - Individual dates (途中入社/退社)
     - Employment type (有期/無期)
     """
-    from app.models.kobetsu_keiyakusho import KobetsuEmployee
-    from app.models.employee import Employee
-    from app.services.contract_logic_service import ContractLogicService
-
     service = KobetsuService(db)
     contract = service.get_by_id(contract_id)
 
@@ -487,9 +497,6 @@ async def add_employee_to_contract(
 
     If hourly_rate is not provided, uses the employee's base rate.
     """
-    from decimal import Decimal
-    from app.services.contract_logic_service import ContractLogicService, ContractValidationError
-
     logic_service = ContractLogicService(db)
 
     try:
@@ -714,9 +721,6 @@ async def suggest_employee_assignment(
         "rate_difference_pct": 0
     }
     """
-    from app.services.contract_logic_service import ContractLogicService
-    from app.models.employee import Employee
-
     logic_service = ContractLogicService(db)
 
     # Get employee
@@ -808,11 +812,6 @@ async def smart_assign_employee(
     - A new contract is created with suggested dates
     - Employee is added as the first worker
     """
-    from decimal import Decimal
-    from app.services.contract_logic_service import ContractLogicService, ContractValidationError
-    from app.models.employee import Employee
-    from app.models.factory import Factory, FactoryLine
-
     logic_service = ContractLogicService(db)
     service = KobetsuService(db)
 
@@ -870,8 +869,6 @@ async def smart_assign_employee(
             line = db.query(FactoryLine).filter(FactoryLine.id == factory_line_id).first()
 
         # Create contract data
-        from app.schemas.kobetsu_keiyakusho import KobetsuKeiyakushoCreate
-
         contract_data = KobetsuKeiyakushoCreate(
             factory_id=factory_id,
             employee_ids=[employee_id],
@@ -964,8 +961,6 @@ async def validate_conflict_date(
     - conflict_date: Factory's 抵触日
     - days_remaining: Days until 抵触日
     """
-    from app.services.contract_logic_service import ContractLogicService
-
     logic_service = ContractLogicService(db)
 
     is_valid, message = logic_service.validate_against_conflict_date(
@@ -1002,8 +997,6 @@ async def suggest_contract_dates(
     - conflict_date: Factory's 抵触日
     - warnings: List of warnings or adjustments made
     """
-    from app.services.contract_logic_service import ContractLogicService
-
     logic_service = ContractLogicService(db)
 
     result = logic_service.suggest_contract_dates(
@@ -1034,8 +1027,6 @@ async def get_expiring_contracts_alerts(
     - critical: 7 days or less
     - warning: more than 7 days
     """
-    from app.services.contract_logic_service import ContractLogicService
-
     logic_service = ContractLogicService(db)
     return logic_service.get_expiring_contracts(days=days)
 
@@ -1055,8 +1046,6 @@ async def get_factories_near_conflict_date(
 
     Includes count of active workers at each factory.
     """
-    from app.services.contract_logic_service import ContractLogicService
-
     logic_service = ContractLogicService(db)
     return logic_service.get_factories_near_conflict_date(days=days)
 
@@ -1084,9 +1073,6 @@ async def export_contracts_csv(
     )
 
     # Generate CSV content
-    import csv
-    import io
-
     output = io.StringIO()
     writer = csv.writer(output)
 

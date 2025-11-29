@@ -100,7 +100,7 @@ export default function FactoryCascadeSelector({
       const cascadeData = await factoryApi.getCascadeData(lineId)
       onSelect(cascadeData)
     } catch (error) {
-      console.error('Failed to fetch cascade data:', error)
+      // Failed to fetch cascade data - error handled silently
     }
   }, [onSelect])
 
@@ -112,7 +112,9 @@ export default function FactoryCascadeSelector({
         setSelectedFactoryId(data.factory.id)
         setSelectedDepartment(data.line.department || '')
         setSelectedLineId(data.line.id)
-      }).catch(console.error)
+      }).catch(() => {
+        // Failed to load initial cascade data - error handled silently
+      })
     }
   }, [initialLineId])
 
