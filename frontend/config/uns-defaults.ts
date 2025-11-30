@@ -24,8 +24,8 @@ export const UNS_COMPANY = {
 export const HAKEN_MOTO_COMPLAINT_CONTACT = {
   department: '管理部',
   position: '部長',
-  name: '佐藤太郎',                    // 実際の担当者名を入力してください
-  phone: '052-571-0123',               // 実際の電話番号を入力してください
+  name: '中山　欣英',
+  phone: '052-938-8840',
 }
 
 // 派遣元責任者 (労働者派遣法第36条)
@@ -33,8 +33,8 @@ export const HAKEN_MOTO_COMPLAINT_CONTACT = {
 export const HAKEN_MOTO_MANAGER = {
   department: '派遣事業部',
   position: '部長',
-  name: '田中花子',                    // 実際の責任者名を入力してください
-  phone: '052-571-0124',               // 実際の電話番号を入力してください
+  name: '中山　欣英',
+  phone: '052-938-8840',
   license_number: '',                  // 派遣元責任者講習修了証番号 (任意)
 }
 
