@@ -404,6 +404,47 @@ export const kobetsuApi = {
     })
     return response.data
   },
+
+  // Validate employee compatibility for contract
+  validateEmployeeCompatibility: async (params: {
+    employee_ids: number[]
+    factory_line_id: number
+    hourly_rate: number
+  }): Promise<{
+    is_valid: boolean
+    compatible_count: number
+    incompatible_count: number
+    compatible: Array<{
+      id: number
+      employee_number: string
+      full_name_kanji: string
+      line_name: string
+      status: string
+    }>
+    incompatible: Array<{
+      id: number
+      employee_number: string
+      full_name_kanji: string
+      line_name: string
+      issues: Array<{
+        type: string
+        reason: string
+        severity: string
+      }>
+    }>
+    suggestions: string[]
+    summary: string
+  }> => {
+    const queryParams = new URLSearchParams()
+    params.employee_ids.forEach(id => queryParams.append('employee_ids', id.toString()))
+    queryParams.append('factory_line_id', params.factory_line_id.toString())
+    queryParams.append('hourly_rate', params.hourly_rate.toString())
+
+    const response = await apiClient.get(
+      `/kobetsu/validate/employee-compatibility?${queryParams.toString()}`
+    )
+    return response.data
+  },
 }
 
 // Factory API

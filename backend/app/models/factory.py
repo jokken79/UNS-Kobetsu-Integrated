@@ -10,12 +10,26 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, Date, Time,
-    DateTime, Numeric, ForeignKey, JSON, Index, UniqueConstraint
+    DateTime, Numeric, ForeignKey, JSON, Index, UniqueConstraint,
+    CheckConstraint, Enum
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from enum import Enum as PyEnum
 
 from app.core.database import Base
+
+
+class ContractCycleType(str, PyEnum):
+    """Contract cycle type enumeration"""
+    MONTHLY = "monthly"
+    ANNUAL = "annual"
+
+
+class ContractCycleDayType(str, PyEnum):
+    """Contract cycle day type enumeration"""
+    FIXED = "fixed"
+    MONTH_END = "month_end"
 
 
 class Factory(Base):
@@ -41,11 +55,13 @@ class Factory(Base):
 
     # 派遣先責任者
     client_responsible_department = Column(String(100))
+    client_responsible_position = Column(String(100))  # 役職: 課長, 部長, etc.
     client_responsible_name = Column(String(100))
     client_responsible_phone = Column(String(50))
 
     # 派遣先苦情処理担当者
     client_complaint_department = Column(String(100))
+    client_complaint_position = Column(String(100))  # 役職: 担当者, 課長, etc.
     client_complaint_name = Column(String(100))
     client_complaint_phone = Column(String(50))
 
@@ -96,6 +112,40 @@ class Factory(Base):
     # 抵触日 (Contract limit date - very important!)
     conflict_date = Column(Date, index=True)  # 抵触日
 
+    # ========================================
+    # Contract Cycle Configuration
+    # ========================================
+    contract_cycle_type = Column(
+        Enum(ContractCycleType),
+        nullable=False,
+        default=ContractCycleType.ANNUAL,
+        comment="月次契約 or 年間契約"
+    )
+    cycle_day_type = Column(
+        Enum(ContractCycleDayType),
+        nullable=False,
+        default=ContractCycleDayType.FIXED,
+        comment="固定日 or 月末"
+    )
+    fiscal_year_end_month = Column(
+        Integer,
+        nullable=False,
+        default=3,
+        comment="決算月 (1-12)"
+    )
+    fiscal_year_end_day = Column(
+        Integer,
+        nullable=False,
+        default=31,
+        comment="決算日 (1-31)"
+    )
+    contract_renewal_days_before = Column(
+        Integer,
+        nullable=False,
+        default=30,
+        comment="自動更新通知日数"
+    )
+
     # Time unit for calculations (e.g., 15 minutes)
     time_unit_minutes = Column(Numeric(4, 1), default=15)
 
@@ -134,6 +184,12 @@ class Factory(Base):
 
     __table_args__ = (
         Index('ix_factories_company_plant', 'company_name', 'plant_name'),
+        CheckConstraint('fiscal_year_end_month BETWEEN 1 AND 12',
+                       name='ck_fiscal_month'),
+        CheckConstraint('fiscal_year_end_day BETWEEN 1 AND 31',
+                       name='ck_fiscal_day'),
+        CheckConstraint('contract_renewal_days_before BETWEEN 0 AND 365',
+                       name='ck_renewal_days'),
     )
 
     def __repr__(self):
@@ -167,6 +223,7 @@ class FactoryLine(Base):
 
     # 指揮命令者 (Supervisor)
     supervisor_department = Column(String(100))
+    supervisor_position = Column(String(100))  # 役職: 課長, 部長, リーダー, etc.
     supervisor_name = Column(String(100))
     supervisor_phone = Column(String(50))
 

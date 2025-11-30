@@ -20,19 +20,21 @@ export const UNS_COMPANY = {
 }
 
 // 派遣元苦情処理担当者 (労働者派遣法第26条第1項第9号)
+// ⚠️ 本番環境では実際の値に置き換えてください
 export const HAKEN_MOTO_COMPLAINT_CONTACT = {
   department: '管理部',
   position: '部長',
-  name: '[要設定] 苦情担当者名',      // ← ここに実際の担当者名を入力
-  phone: '052-XXX-XXXX',              // ← ここに実際の電話番号を入力
+  name: '中山　欣英',
+  phone: '052-938-8840',
 }
 
 // 派遣元責任者 (労働者派遣法第36条)
+// ⚠️ 本番環境では実際の値に置き換えてください
 export const HAKEN_MOTO_MANAGER = {
   department: '派遣事業部',
   position: '部長',
-  name: '[要設定] 派遣元責任者名',    // ← ここに実際の責任者名を入力
-  phone: '052-XXX-XXXX',              // ← ここに実際の電話番号を入力
+  name: '中山　欣英',
+  phone: '052-938-8840',
   license_number: '',                  // 派遣元責任者講習修了証番号 (任意)
 }
 

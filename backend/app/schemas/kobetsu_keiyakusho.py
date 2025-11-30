@@ -41,6 +41,7 @@ class KobetsuKeiyakushoCreate(BaseModel):
     # Relaciones
     factory_id: int = Field(..., gt=0)
     dispatch_assignment_id: Optional[int] = Field(None, gt=0)
+    previous_contract_id: Optional[int] = Field(None, gt=0, description="Previous contract ID for renewals")
     employee_ids: List[int] = Field(..., min_items=1, description="派遣労働者IDリスト")
     
     # 基本情報
@@ -175,7 +176,8 @@ class KobetsuKeiyakushoCreate(BaseModel):
 
 class KobetsuKeiyakushoUpdate(BaseModel):
     """個別契約書更新用スキーマ"""
-    
+
+    previous_contract_id: Optional[int] = Field(None, gt=0, description="Previous contract ID for renewals")
     contract_date: Optional[date] = None
     dispatch_end_date: Optional[date] = None
     work_content: Optional[str] = Field(None, min_length=10)
@@ -235,7 +237,8 @@ class KobetsuKeiyakushoResponse(BaseModel):
     id: int
     factory_id: int
     dispatch_assignment_id: Optional[int]
-    
+    previous_contract_id: Optional[int]
+
     # 基本情報
     contract_number: str
     contract_date: date

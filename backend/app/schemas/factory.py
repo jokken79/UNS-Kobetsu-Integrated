@@ -7,8 +7,21 @@ Includes schemas for cascading dropdowns:
 from datetime import date, time, datetime
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
+from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, validator
+
+
+class ContractCycleTypeEnum(str, Enum):
+    """Contract cycle type enumeration"""
+    monthly = "monthly"
+    annual = "annual"
+
+
+class ContractCycleDayTypeEnum(str, Enum):
+    """Contract cycle day type enumeration"""
+    fixed = "fixed"
+    month_end = "month_end"
 
 
 # ========================================
@@ -147,6 +160,34 @@ class FactoryBase(BaseModel):
     # 抵触日
     conflict_date: Optional[date] = Field(None, description="抵触日")
 
+    # Contract cycle configuration
+    contract_cycle_type: ContractCycleTypeEnum = Field(
+        default=ContractCycleTypeEnum.annual,
+        description="月次契約 or 年間契約"
+    )
+    cycle_day_type: ContractCycleDayTypeEnum = Field(
+        default=ContractCycleDayTypeEnum.fixed,
+        description="固定日 or 月末"
+    )
+    fiscal_year_end_month: int = Field(
+        default=3,
+        ge=1,
+        le=12,
+        description="決算月 (1-12)"
+    )
+    fiscal_year_end_day: int = Field(
+        default=31,
+        ge=1,
+        le=31,
+        description="決算日 (1-31)"
+    )
+    contract_renewal_days_before: int = Field(
+        default=30,
+        ge=0,
+        le=365,
+        description="更新通知日数"
+    )
+
     # 支払条件
     closing_date: Optional[str] = None
     payment_date: Optional[str] = None
@@ -156,6 +197,30 @@ class FactoryBase(BaseModel):
     agreement_period: Optional[date] = None
 
     notes: Optional[str] = None
+
+    @validator('fiscal_year_end_month')
+    def validate_month(cls, v):
+        if not 1 <= v <= 12:
+            raise ValueError('Month must be between 1 and 12')
+        return v
+
+    @validator('fiscal_year_end_day')
+    def validate_day(cls, v, values):
+        if not 1 <= v <= 31:
+            raise ValueError('Day must be between 1 and 31')
+        # Additional validation for specific months could be added here
+        month = values.get('fiscal_year_end_month')
+        if month and month == 2 and v > 29:
+            raise ValueError('February cannot have more than 29 days')
+        if month and month in [4, 6, 9, 11] and v > 30:
+            raise ValueError(f'Month {month} cannot have more than 30 days')
+        return v
+
+    @validator('contract_renewal_days_before')
+    def validate_renewal_days(cls, v):
+        if not 0 <= v <= 365:
+            raise ValueError('Renewal days must be between 0 and 365')
+        return v
 
 
 class FactoryCreate(FactoryBase):
@@ -173,6 +238,14 @@ class FactoryUpdate(BaseModel):
     plant_address: Optional[str] = None
     conflict_date: Optional[date] = None
     agreement_period: Optional[date] = None
+
+    # Contract cycle configuration
+    contract_cycle_type: Optional[ContractCycleTypeEnum] = None
+    cycle_day_type: Optional[ContractCycleDayTypeEnum] = None
+    fiscal_year_end_month: Optional[int] = Field(None, ge=1, le=12)
+    fiscal_year_end_day: Optional[int] = Field(None, ge=1, le=31)
+    contract_renewal_days_before: Optional[int] = Field(None, ge=0, le=365)
+
     is_active: Optional[bool] = None
     notes: Optional[str] = None
 

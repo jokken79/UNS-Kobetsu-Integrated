@@ -24,6 +24,9 @@ from app.models.factory import Factory, FactoryLine
 from app.services.kobetsu_service import KobetsuService
 from app.services.kobetsu_pdf_service import KobetsuPDFService
 from app.services.contract_logic_service import ContractLogicService, ContractValidationError
+from app.services.contract_date_service import ContractDateService
+from app.services.contract_renewal_service import ContractRenewalService
+from app.services.employee_compatibility_service import EmployeeCompatibilityValidator
 from app.schemas.kobetsu_keiyakusho import (
     KobetsuKeiyakushoCreate,
     KobetsuKeiyakushoUpdate,
@@ -1048,6 +1051,238 @@ async def get_factories_near_conflict_date(
     """
     logic_service = ContractLogicService(db)
     return logic_service.get_factories_near_conflict_date(days=days)
+
+
+# ========================================
+# VALIDATION ENDPOINTS
+# ========================================
+
+@router.post("/validate/employee-compatibility")
+async def validate_employee_compatibility(
+    employee_ids: List[int] = Query(..., description="Employee IDs to validate"),
+    factory_line_id: Optional[int] = Query(None, description="Factory line ID"),
+    hourly_rate: Optional[Decimal] = Query(None, description="Hourly rate (tanka)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Validate that multiple employees can work under the same contract.
+
+    Checks:
+    ✅ All employees are active (not resigned)
+    ✅ All employees are on the SAME factory_line_id
+    ✅ Compatible hourly rates
+    ✅ No conflicts with employee status/assignment
+
+    Returns:
+    {
+        "is_valid": bool,
+        "compatible_count": int,
+        "incompatible_count": int,
+        "compatible": [
+            {
+                "id": 1,
+                "employee_number": "EMP001",
+                "full_name_kanji": "山田太郎",
+                "line_name": "Manual Assembly",
+                "status": "compatible"
+            }
+        ],
+        "incompatible": [
+            {
+                "id": 3,
+                "employee_number": "EMP003",
+                "full_name_kanji": "神田太郎",
+                "line_name": "Welding",
+                "issues": [
+                    {
+                        "type": "different_line",
+                        "reason": "Employee is on Welding, contract is for Manual Assembly",
+                        "severity": "error"
+                    }
+                ]
+            }
+        ],
+        "suggestions": [
+            "Create separate contract for EMP003 (different line)"
+        ],
+        "summary": "1 compatible + 1 incompatible → Needs 1 separate contract"
+    }
+
+    Example:
+        POST /api/v1/kobetsu/validate/employee-compatibility?employee_ids=1&employee_ids=2&employee_ids=3&factory_line_id=5&hourly_rate=1200
+    """
+    try:
+        validator = EmployeeCompatibilityValidator(db)
+
+        # Convert Decimal to proper type if provided
+        rate = Decimal(str(hourly_rate)) if hourly_rate else None
+
+        # Validate employees using the service
+        result = validator.validate_employees(
+            employee_ids=employee_ids,
+            factory_line_id=factory_line_id,
+            hourly_rate=rate
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+
+
+# ========================================
+# RENEWAL ENDPOINTS - Contract cycle management
+# ========================================
+
+@router.get("/{kobetsu_id}/renewal-info")
+async def get_renewal_info(
+    kobetsu_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get preview information about what will be renewed for a contract.
+
+    Shows:
+    - Current contract details
+    - Calculated new contract dates based on factory cycle
+    - Employee status
+    - Number of fields that will be copied
+    - Any warnings (e.g., resigned employees)
+
+    Useful for showing a preview before renewal.
+    """
+    try:
+        renewal_service = ContractRenewalService(db)
+        info = renewal_service.get_renewal_info(kobetsu_id)
+        return info
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{kobetsu_id}/renew")
+async def renew_contract(
+    kobetsu_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate next contract based on factory cycle configuration.
+
+    This endpoint:
+    1. Retrieves the current contract
+    2. Validates all employees are still active
+    3. Calculates new contract dates based on factory cycle rules
+    4. Creates a new contract with status='draft'
+    5. Links to previous contract for audit trail
+
+    The new contract copies:
+    - Work location, content, responsibility level
+    - Work schedule (days, hours, breaks)
+    - Supervisor information
+    - Contact and manager information
+    - Payment rates (can be edited before activation)
+
+    The new contract does NOT copy:
+    - contract_number (auto-generated)
+    - status (set to 'draft')
+    - created_at (set to now)
+    - pdf_path (reset)
+    - signatures/approvals
+
+    Returns:
+        New KobetsuKeiyakusho contract with status='draft'
+
+    Raises:
+        404: Contract not found
+        400: Employee validation failed (resigned employees)
+        422: Factory cycle configuration invalid
+
+    Example:
+        POST /api/v1/kobetsu/42/renew
+
+        Response:
+        {
+          "id": 43,
+          "contract_number": "KOB-202412-0001",
+          "dispatch_start_date": "2025-05-01",
+          "dispatch_end_date": "2025-05-31",
+          "status": "draft",
+          "previous_contract_id": 42,
+          ...other fields...
+        }
+    """
+    try:
+        renewal_service = ContractRenewalService(db)
+        renewed_contract = renewal_service.renew_contract(
+            current_contract_id=kobetsu_id,
+            created_by_id=current_user.get('id')
+        )
+        return KobetsuKeiyakushoResponse.model_validate(renewed_contract)
+    except ValueError as e:
+        # Employee validation or contract not found
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Renewal failed: {str(e)}")
+
+
+@router.get("/{factory_id}/cycle-info")
+async def get_factory_cycle_info(
+    factory_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get factory contract cycle information.
+
+    Returns:
+    - Cycle type (monthly or annual)
+    - Fiscal year end date
+    - Human-readable description
+    - Example of calculated dates if contract starts today
+
+    Useful for frontend to show cycle rules and auto-calculate contract dates.
+
+    Example response:
+    {
+      "factory_id": 1,
+      "cycle_type": "monthly",
+      "fiscal_year_end": "4/30",
+      "description": "月次契約 (毎月更新)",
+      "example": {
+        "if_start_today": "2024-11-30",
+        "calculated_end": "2024-12-31"
+      }
+    }
+    """
+    factory = db.query(Factory).filter(Factory.id == factory_id).first()
+    if not factory:
+        raise HTTPException(status_code=404, detail="Factory not found")
+
+    date_service = ContractDateService(db)
+
+    # Calculate example dates
+    today = date.today()
+    start_date, end_date = date_service.calculate_contract_dates(
+        factory_id=factory_id,
+        employee_start_date=today
+    )
+
+    return {
+        "factory_id": factory_id,
+        "cycle_type": factory.contract_cycle_type.value,
+        "cycle_day_type": factory.cycle_day_type.value,
+        "fiscal_year_end": f"{factory.fiscal_year_end_month}/{factory.fiscal_year_end_day}",
+        "description": date_service.get_cycle_description(factory_id),
+        "example": {
+            "if_start_today": str(today),
+            "calculated_end": str(end_date),
+            "duration_days": (end_date - start_date).days + 1
+        }
+    }
 
 
 # ========================================

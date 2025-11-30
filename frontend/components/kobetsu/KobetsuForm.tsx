@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { factoryApi, employeeApi } from '@/lib/api'
+import { factoryApi, employeeApi, kobetsuApi } from '@/lib/api'
 import type { KobetsuCreate, FactoryListItem, EmployeeListItem } from '@/types'
 import {
   HAKEN_MOTO_COMPLAINT_CONTACT,
@@ -64,6 +64,32 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
   const [loadingEmployees, setLoadingEmployees] = useState(false)
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [compatibilityStatus, setCompatibilityStatus] = useState<{
+    is_valid: boolean
+    compatible_count: number
+    incompatible_count: number
+    compatible: Array<{
+      id: number
+      employee_number: string
+      full_name_kanji: string
+      line_name: string
+      status: string
+    }>
+    incompatible: Array<{
+      id: number
+      employee_number: string
+      full_name_kanji: string
+      line_name: string
+      issues: Array<{
+        type: string
+        reason: string
+        severity: string
+      }>
+    }>
+    suggestions: string[]
+    summary: string
+  } | null>(null)
+  const [validatingCompatibility, setValidatingCompatibility] = useState(false)
 
   useEffect(() => {
     async function loadFactories() {
@@ -101,15 +127,47 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
     loadEmployees()
   }, [])
 
+  // Validate employee compatibility when selection changes
+  useEffect(() => {
+    const validateCompatibility = async () => {
+      if (!formData.employee_ids || formData.employee_ids.length === 0) {
+        setCompatibilityStatus(null)
+        return
+      }
+
+      if (!formData.factory_id) {
+        setCompatibilityStatus(null)
+        return
+      }
+
+      setValidatingCompatibility(true)
+      try {
+        const result = await kobetsuApi.validateEmployeeCompatibility({
+          employee_ids: formData.employee_ids,
+          factory_line_id: formData.factory_id, // TODO: should be factory_line_id, not factory_id
+          hourly_rate: formData.hourly_rate || DEFAULT_WORK_CONDITIONS.hourly_rate,
+        })
+        setCompatibilityStatus(result)
+      } catch (err) {
+        console.error('Failed to validate compatibility:', err)
+        setCompatibilityStatus(null)
+      } finally {
+        setValidatingCompatibility(false)
+      }
+    }
+
+    validateCompatibility()
+  }, [formData.employee_ids, formData.factory_id, formData.hourly_rate])
+
   // Filter employees based on search (by 社員№ or name)
   const filteredEmployees = useMemo(() => {
-    if (!employeeSearch.trim()) return employees.slice(0, 50) // Show first 50 by default
+    if (!employeeSearch.trim()) return employees.slice(0, 200) // Show first 200 by default
     const search = employeeSearch.toLowerCase()
     return employees.filter(emp =>
       emp.employee_number?.toLowerCase().includes(search) ||
       emp.full_name_kanji?.toLowerCase().includes(search) ||
       emp.full_name_kana?.toLowerCase().includes(search)
-    ).slice(0, 50)
+    ).slice(0, 200) // Aumentado a 200 para mejor UX
   }, [employees, employeeSearch])
 
   // Handle employee selection
@@ -143,16 +201,17 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
             worksite_name: factory.plant_name,
             worksite_address: factory.plant_address || factory.company_address || '',
             supervisor_department: factory.supervisor_department || '',
+            supervisor_position: factory.supervisor_position || '',  // Usa configuración de fábrica, sin defaults
             supervisor_name: factory.supervisor_name || '',
             haken_saki_complaint_contact: {
                 department: factory.client_complaint_department || '',
-                position: '', // Usually not in factory data directly unless mapped
+                position: factory.client_complaint_position || '',  // Usa configuración de fábrica
                 name: factory.client_complaint_name || '',
                 phone: factory.client_complaint_phone || '',
             },
             haken_saki_manager: {
                 department: factory.client_responsible_department || '',
-                position: '',
+                position: factory.client_responsible_position || '',  // Usa configuración de fábrica
                 name: factory.client_responsible_name || '',
                 phone: factory.client_responsible_phone || '',
             }
@@ -224,6 +283,14 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
       if (formData.dispatch_end_date < formData.dispatch_start_date) {
         newErrors.dispatch_end_date = '終了日は開始日以降にしてください'
       }
+      // ✅ 労働者派遣法: 派遣期間は最大3年
+      const startDate = new Date(formData.dispatch_start_date)
+      const endDate = new Date(formData.dispatch_end_date)
+      const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+                         (endDate.getMonth() - startDate.getMonth())
+      if (monthsDiff > 36) {
+        newErrors.dispatch_end_date = '派遣期間は36ヶ月(3年)以内である必要があります（労働者派遣法第40条）'
+      }
     }
     if (!formData.supervisor_name) {
       newErrors.supervisor_name = '指揮命令者を入力してください'
@@ -278,6 +345,92 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
         <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b">
           派遣労働者選択 *
         </h3>
+
+        {/* Employee Compatibility Status */}
+        {compatibilityStatus && (
+          <div className="mb-6 border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              {compatibilityStatus.is_valid ? (
+                <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded">
+                  <span className="text-xl">✅</span>
+                  <span className="font-semibold">{compatibilityStatus.summary}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-orange-700 bg-orange-50 px-3 py-2 rounded">
+                  <span className="text-xl">⚠️</span>
+                  <span className="font-semibold">{compatibilityStatus.summary}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Compatible employees */}
+            {compatibilityStatus.compatible.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-green-700 mb-2">
+                  ✅ Compatible ({compatibilityStatus.compatible_count}):
+                </h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {compatibilityStatus.compatible.map(emp => (
+                    <div key={emp.id} className="bg-green-50 border border-green-200 rounded p-2 text-sm">
+                      <div className="font-medium text-gray-900">
+                        {emp.employee_number} - {emp.full_name_kanji}
+                      </div>
+                      <div className="text-gray-600 text-xs">
+                        Line: {emp.line_name} | Status: {emp.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Incompatible employees */}
+            {compatibilityStatus.incompatible.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-red-700 mb-2">
+                  ❌ Incompatible - Need Separate Contract ({compatibilityStatus.incompatible_count}):
+                </h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {compatibilityStatus.incompatible.map(emp => (
+                    <div key={emp.id} className="bg-red-50 border border-red-200 rounded p-2 text-sm">
+                      <div className="font-medium text-gray-900">
+                        {emp.employee_number} - {emp.full_name_kanji}
+                      </div>
+                      <div className="text-gray-600 text-xs mb-1">
+                        Line: {emp.line_name}
+                      </div>
+                      {emp.issues.map((issue, idx) => (
+                        <div key={idx} className="text-red-700 text-xs">
+                          • {issue.reason}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Suggestions */}
+            {compatibilityStatus.suggestions.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <h4 className="text-sm font-semibold text-blue-700 mb-2">💡 Suggestions:</h4>
+                <ul className="space-y-1">
+                  {compatibilityStatus.suggestions.map((suggestion, idx) => (
+                    <li key={idx} className="text-sm text-blue-700">
+                      • {suggestion}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {validatingCompatibility && (
+          <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+            Validating employee compatibility...
+          </div>
+        )}
 
         {/* Selected employees display */}
         {selectedEmployees.length > 0 && (

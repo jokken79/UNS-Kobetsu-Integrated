@@ -34,7 +34,10 @@ class KobetsuKeiyakusho(Base):
     # New: Base Madre references (added in migration 002)
     company_id = Column(Integer, ForeignKey('companies.company_id', ondelete='SET NULL'), nullable=True, index=True)
     plant_id = Column(Integer, ForeignKey('plants.plant_id', ondelete='SET NULL'), nullable=True, index=True)
-    
+
+    # Contract renewal tracking (added in migration 004)
+    previous_contract_id = Column(Integer, ForeignKey('kobetsu_keiyakusho.id', ondelete='SET NULL'), nullable=True, index=True)
+
     # ========================================
     # 基本情報 (Información Básica)
     # ========================================
@@ -162,6 +165,9 @@ class KobetsuKeiyakusho(Base):
     # New: Base Madre relationships
     company = relationship("Company", back_populates="kobetsu_contracts")
     plant = relationship("Plant", back_populates="kobetsu_contracts")
+
+    # Self-referential relationship for contract renewal chains
+    previous_contract = relationship("KobetsuKeiyakusho", remote_side=[id], foreign_keys=[previous_contract_id])
     
     # ========================================
     # TABLE CONSTRAINTS
