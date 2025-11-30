@@ -45,7 +45,7 @@ jobs:
       backup-name: ${{ steps.backup.outputs.name }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Determine deployment version
         id: version
@@ -81,7 +81,7 @@ jobs:
         service: [backend, frontend]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -108,7 +108,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.event.inputs.environment == 'production' }}
 
       - name: Build and push ${{ matrix.service }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.service }}
           push: true
@@ -130,7 +130,7 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install PostgreSQL client
         run: |
@@ -153,7 +153,7 @@ jobs:
           # aws s3 cp "$BACKUP_NAME.sql.gz" s3://backups/database/
 
       - name: Upload backup artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: database-backup-${{ needs.pre-deploy.outputs.backup-name }}
           path: |
@@ -172,10 +172,10 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -210,10 +210,10 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create deployment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: deployment
         with:
           script: |
@@ -251,7 +251,7 @@ jobs:
           echo "✅ Deployment completed"
 
       - name: Update deployment status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: always()
         with:
           script: |
@@ -272,7 +272,7 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Health check - Backend
         run: |
@@ -310,7 +310,7 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Initiate rollback
         run: |
