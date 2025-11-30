@@ -201,17 +201,17 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
             worksite_name: factory.plant_name,
             worksite_address: factory.plant_address || factory.company_address || '',
             supervisor_department: factory.supervisor_department || '',
-            supervisor_position: factory.supervisor_position || '課長',  // ✅ Auto-fill con default
+            supervisor_position: factory.supervisor_position || '',  // Usa configuración de fábrica, sin defaults
             supervisor_name: factory.supervisor_name || '',
             haken_saki_complaint_contact: {
                 department: factory.client_complaint_department || '',
-                position: '担当者',  // ✅ Default position para complaint contact
+                position: factory.client_complaint_position || '',  // Usa configuración de fábrica
                 name: factory.client_complaint_name || '',
                 phone: factory.client_complaint_phone || '',
             },
             haken_saki_manager: {
                 department: factory.client_responsible_department || '',
-                position: '課長',  // ✅ Default position para manager
+                position: factory.client_responsible_position || '',  // Usa configuración de fábrica
                 name: factory.client_responsible_name || '',
                 phone: factory.client_responsible_phone || '',
             }

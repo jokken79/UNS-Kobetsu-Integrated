@@ -55,11 +55,13 @@ class Factory(Base):
 
     # 派遣先責任者
     client_responsible_department = Column(String(100))
+    client_responsible_position = Column(String(100))  # 役職: 課長, 部長, etc.
     client_responsible_name = Column(String(100))
     client_responsible_phone = Column(String(50))
 
     # 派遣先苦情処理担当者
     client_complaint_department = Column(String(100))
+    client_complaint_position = Column(String(100))  # 役職: 担当者, 課長, etc.
     client_complaint_name = Column(String(100))
     client_complaint_phone = Column(String(50))
 
@@ -221,6 +223,7 @@ class FactoryLine(Base):
 
     # 指揮命令者 (Supervisor)
     supervisor_department = Column(String(100))
+    supervisor_position = Column(String(100))  # 役職: 課長, 部長, リーダー, etc.
     supervisor_name = Column(String(100))
     supervisor_phone = Column(String(50))
 
