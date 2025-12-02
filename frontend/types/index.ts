@@ -218,6 +218,7 @@ export interface FactoryLineCreate {
   department?: string
   line_name?: string
   supervisor_department?: string
+  supervisor_position?: string
   supervisor_name?: string
   supervisor_phone?: string
   job_description?: string
@@ -236,6 +237,7 @@ export interface FactoryLineUpdate {
   department?: string
   line_name?: string
   supervisor_department?: string
+  supervisor_position?: string
   supervisor_name?: string
   supervisor_phone?: string
   job_description?: string
@@ -257,6 +259,7 @@ export interface FactoryLineResponse {
   department?: string
   line_name?: string
   supervisor_department?: string
+  supervisor_position?: string
   supervisor_name?: string
   supervisor_phone?: string
   job_description?: string
