@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.database import SessionLocal
 from app.models.employee import Employee
-from app.models.factory import Factory
+from app.models.factory import Factory, FactoryLine
 
 
 # Manual mapping for employee company_name -> (factory_company, factory_plant)
@@ -90,6 +90,38 @@ def normalize_name(name: str) -> str:
     # Remove whitespace
     name = name.strip()
     return name
+
+
+def find_factory_line(db, factory_id: int, department: str, line_name: str):
+    """Find matching factory line based on department and line_name."""
+    if not factory_id:
+        return None
+
+    query = db.query(FactoryLine).filter(FactoryLine.factory_id == factory_id)
+
+    # Try exact match first
+    if department and line_name:
+        line = query.filter(
+            FactoryLine.department == department,
+            FactoryLine.line_name == line_name
+        ).first()
+        if line:
+            return line
+
+    # Try line_name match
+    if line_name:
+        line = query.filter(FactoryLine.line_name == line_name).first()
+        if line:
+            return line
+
+    # Try department match
+    if department:
+        line = query.filter(FactoryLine.department == department).first()
+        if line:
+            return line
+
+    # Return first available line if no match
+    return query.first()
 
 
 def find_factory_match(db, emp_company_name: str):
@@ -164,7 +196,8 @@ def link_employees_to_factories(dry_run: bool = True):
         print(f"Processing {len(employees)} active employees...\n")
 
         stats = {
-            'matched': 0,
+            'matched_factory': 0,
+            'matched_line': 0,
             'unmatched': 0,
             'already_linked': 0,
         }
@@ -174,18 +207,42 @@ def link_employees_to_factories(dry_run: bool = True):
         unmatched_companies = set()
 
         for emp in employees:
-            if emp.factory_id:
+            if emp.factory_id and emp.factory_line_id:
                 stats['already_linked'] += 1
                 continue
 
-            factory = find_factory_match(db, emp.company_name)
+            # Find factory if not already linked
+            factory = None
+            if emp.factory_id:
+                factory = db.query(Factory).filter(Factory.id == emp.factory_id).first()
+            else:
+                factory = find_factory_match(db, emp.company_name)
 
             if factory:
-                stats['matched'] += 1
+                if not emp.factory_id:
+                    stats['matched_factory'] += 1
                 matches_by_company[emp.company_name].append((emp, factory))
 
                 if not dry_run:
                     emp.factory_id = factory.id
+                    emp.plant_name = factory.plant_name
+
+                # Find factory line
+                factory_line = find_factory_line(
+                    db,
+                    factory.id,
+                    emp.department,
+                    emp.line_name
+                )
+
+                if factory_line:
+                    stats['matched_line'] += 1
+                    if not dry_run:
+                        emp.factory_line_id = factory_line.id
+                        if not emp.department:
+                            emp.department = factory_line.department
+                        if not emp.line_name:
+                            emp.line_name = factory_line.line_name
             else:
                 stats['unmatched'] += 1
                 unmatched_companies.add(emp.company_name)
@@ -211,9 +268,10 @@ def link_employees_to_factories(dry_run: bool = True):
         print(f"\n{'='*60}")
         print("SUMMARY")
         print(f"{'='*60}")
-        print(f"Employees matched: {stats['matched']}")
+        print(f"Factories linked: {stats['matched_factory']}")
+        print(f"Lines linked: {stats['matched_line']}")
         print(f"Employees unmatched: {stats['unmatched']}")
-        print(f"Already linked: {stats['already_linked']}")
+        print(f"Already fully linked: {stats['already_linked']}")
 
         if dry_run:
             print(f"\n{'='*60}")
