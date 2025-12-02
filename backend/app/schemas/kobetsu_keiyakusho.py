@@ -341,6 +341,93 @@ class KobetsuKeiyakushoStats(BaseModel):
     expired_contracts: int
     draft_contracts: int
     total_workers: int
-    
+
     class Config:
         from_attributes = True
+
+
+# ========================================
+# RATE GROUPING SCHEMAS (単価別グループ化)
+# ========================================
+
+class RateGroupingRequest(BaseModel):
+    """単価別グループ化リクエスト"""
+    employee_ids: List[int] = Field(..., min_items=1, description="従業員IDリスト")
+    factory_id: Optional[int] = Field(None, description="工場ID（オプション）")
+
+
+class EmployeeInGroup(BaseModel):
+    """グループ内の従業員情報"""
+    id: int
+    employee_number: str
+    full_name_kana: str
+    full_name_kanji: Optional[str] = None
+    hourly_rate: Optional[Decimal] = None
+    billing_rate: Optional[Decimal] = None
+    department: Optional[str] = None
+    line_name: Optional[str] = None
+    factory_line_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RateGroup(BaseModel):
+    """単価グループ"""
+    hourly_rate: Decimal
+    billing_rate: Optional[Decimal] = None
+    employee_count: int
+    employees: List[EmployeeInGroup]
+
+
+class RateGroupingResponse(BaseModel):
+    """単価別グループ化レスポンス"""
+    total_employees: int
+    groups: List[RateGroup]
+    has_multiple_rates: bool
+    suggested_contracts: int
+    message: str
+
+
+# ========================================
+# BATCH CREATE SCHEMAS (一括作成)
+# ========================================
+
+class KobetsuBatchContractItem(BaseModel):
+    """一括作成用の個別契約情報"""
+    employee_ids: List[int] = Field(..., min_items=1)
+    hourly_rate: Decimal
+    billing_rate: Optional[Decimal] = None
+    number_of_workers: Optional[int] = None  # Auto-calculated if not provided
+
+
+class KobetsuBatchCreateRequest(BaseModel):
+    """一括契約作成リクエスト"""
+    # 共通情報（全契約に適用）
+    factory_id: int = Field(..., gt=0)
+    contract_date: date
+    dispatch_start_date: date
+    dispatch_end_date: date
+    work_content: str
+    responsibility_level: str = "通常業務"
+    worksite_name: str
+    worksite_address: str
+    supervisor_department: Optional[str] = None
+    supervisor_position: Optional[str] = None
+    supervisor_name: Optional[str] = None
+    supervisor_phone: Optional[str] = None
+    work_days: List[str] = Field(default=["月", "火", "水", "木", "金"])
+    work_start_time: Optional[time] = None
+    work_end_time: Optional[time] = None
+    break_time_minutes: int = 60
+
+    # グループ別契約（単価ごと）
+    contracts: List[KobetsuBatchContractItem] = Field(..., min_items=1)
+
+
+class KobetsuBatchCreateResponse(BaseModel):
+    """一括契約作成レスポンス"""
+    success: bool
+    created_count: int
+    contracts: List[Dict[str, Any]]  # Created contract summaries
+    message: str
