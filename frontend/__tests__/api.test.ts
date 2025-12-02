@@ -2,30 +2,37 @@
  * Tests for API client
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+
+// Mock axios BEFORE imports that use it
+const mockAxiosInstance = {
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
+  interceptors: {
+    request: { use: vi.fn() },
+    response: { use: vi.fn() },
+  },
+}
+
+vi.mock('axios', () => ({
+  default: {
+    create: vi.fn(() => mockAxiosInstance),
+    post: vi.fn(),
+    get: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}))
+
+// Now import the modules that depend on axios
 import axios from 'axios'
 import { authApi, kobetsuApi } from '@/lib/api'
 
-// Mock axios
-vi.mock('axios')
-
 describe('API Client', () => {
-  const mockAxiosInstance = {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-    interceptors: {
-      request: { use: vi.fn() },
-      response: { use: vi.fn() },
-    },
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-
-    // Setup axios mock
-    vi.mocked(axios.create).mockReturnValue(mockAxiosInstance as any)
   })
 
   afterEach(() => {
@@ -47,12 +54,12 @@ describe('API Client', () => {
         mockAxiosInstance.post.mockResolvedValueOnce(mockResponse)
 
         const result = await authApi.login({
-          username: 'test@example.com',
+          email: 'test@example.com',
           password: 'password123',
         })
 
         expect(mockAxiosInstance.post).toHaveBeenCalledWith('/auth/login', {
-          username: 'test@example.com',
+          email: 'test@example.com',
           password: 'password123',
         })
 
@@ -67,7 +74,7 @@ describe('API Client', () => {
 
         await expect(
           authApi.login({
-            username: 'invalid@example.com',
+            email: 'invalid@example.com',
             password: 'wrong',
           })
         ).rejects.toThrow('Invalid credentials')
@@ -413,7 +420,7 @@ describe('API Client', () => {
       })
 
       // Mock the retry of the original request
-      mockAxiosInstance.mockResolvedValueOnce({ data: 'success' })
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: 'success' })
 
       const result = await responseInterceptor(error)
 

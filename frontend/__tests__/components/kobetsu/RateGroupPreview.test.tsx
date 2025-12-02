@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
 import { RateGroupPreview } from '@/components/kobetsu/RateGroupPreview'
 
 describe('RateGroupPreview', () => {
@@ -48,8 +49,8 @@ describe('RateGroupPreview', () => {
     hasMultipleRates: true,
     suggestedContracts: 2,
     message: '3名を2つの契約に分割することを推奨します',
-    onConfirm: jest.fn(),
-    onCancel: jest.fn(),
+    onConfirm: vi.fn(),
+    onCancel: vi.fn(),
     isLoading: false
   }
 
@@ -103,7 +104,7 @@ describe('RateGroupPreview', () => {
   })
 
   it('calls onConfirm with split decision', async () => {
-    const onConfirm = jest.fn()
+    const onConfirm = vi.fn()
     render(<RateGroupPreview {...defaultProps} onConfirm={onConfirm} />)
 
     // Change to single contract option
@@ -120,7 +121,7 @@ describe('RateGroupPreview', () => {
   })
 
   it('calls onCancel when cancel button clicked', () => {
-    const onCancel = jest.fn()
+    const onCancel = vi.fn()
     render(<RateGroupPreview {...defaultProps} onCancel={onCancel} />)
 
     const cancelButton = screen.getByText('キャンセル')
@@ -130,7 +131,7 @@ describe('RateGroupPreview', () => {
   })
 
   it('calls onCancel when backdrop clicked', () => {
-    const onCancel = jest.fn()
+    const onCancel = vi.fn()
     const { container } = render(<RateGroupPreview {...defaultProps} onCancel={onCancel} />)
 
     // Click the backdrop
@@ -158,13 +159,13 @@ describe('RateGroupPreview', () => {
   it('formats currency correctly', () => {
     render(<RateGroupPreview {...defaultProps} />)
 
-    // Check if hourly rates are formatted as currency
-    expect(screen.getByText(/¥1,650/)).toBeInTheDocument()
-    expect(screen.getByText(/¥1,600/)).toBeInTheDocument()
+    // Check if hourly rates are formatted as currency (Intl uses full-width yen ￥)
+    expect(screen.getByText(/[¥￥]1,650/)).toBeInTheDocument()
+    expect(screen.getByText(/[¥￥]1,600/)).toBeInTheDocument()
   })
 
   it('handles Escape key to close', () => {
-    const onCancel = jest.fn()
+    const onCancel = vi.fn()
     render(<RateGroupPreview {...defaultProps} onCancel={onCancel} />)
 
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -173,7 +174,7 @@ describe('RateGroupPreview', () => {
   })
 
   it('handles Ctrl+Enter to confirm', () => {
-    const onConfirm = jest.fn()
+    const onConfirm = vi.fn()
     render(<RateGroupPreview {...defaultProps} onConfirm={onConfirm} />)
 
     fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
