@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { employeeApi } from '@/lib/api'
-import type { EmployeeUpdate } from '@/types'
+import { employeeApi, factoryApi } from '@/lib/api'
+import FactoryCascadeSelector from '@/components/factory/FactoryCascadeSelector'
+import type { EmployeeUpdate, FactoryCascadeData } from '@/types'
 
 export default function EditEmployeePage() {
   const router = useRouter()
@@ -14,6 +15,8 @@ export default function EditEmployeePage() {
 
   const [formData, setFormData] = useState<Partial<EmployeeUpdate>>({})
   const [isEditing, setIsEditing] = useState(false)
+  const [isEditingAssignment, setIsEditingAssignment] = useState(false)
+  const [selectedFactory, setSelectedFactory] = useState<FactoryCascadeData | null>(null)
 
   // Fetch employee data
   const { data: employee, isLoading } = useQuery({
@@ -68,6 +71,64 @@ export default function EditEmployeePage() {
       alert(`エラー: ${error.response?.data?.detail || error.message}`)
     },
   })
+
+  // Mutation for assigning employee to factory/line
+  const assignMutation = useMutation({
+    mutationFn: async (data: { factory_id: number; factory_line_id?: number; company_name?: string; plant_name?: string; department?: string; line_name?: string }) => {
+      // Use the update endpoint to set assignment
+      return employeeApi.update(employeeId, {
+        factory_id: data.factory_id,
+        factory_line_id: data.factory_line_id,
+        company_name: data.company_name,
+        plant_name: data.plant_name,
+        department: data.department,
+        line_name: data.line_name,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee', employeeId] })
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+      alert('派遣先を更新しました')
+      setIsEditingAssignment(false)
+      setSelectedFactory(null)
+    },
+    onError: (error: any) => {
+      alert(`エラー: ${error.response?.data?.detail || error.message}`)
+    },
+  })
+
+  // Handle factory selection
+  const handleFactorySelect = (data: FactoryCascadeData) => {
+    setSelectedFactory(data)
+  }
+
+  // Save assignment
+  const handleSaveAssignment = () => {
+    if (!selectedFactory) return
+
+    assignMutation.mutate({
+      factory_id: selectedFactory.factory.id,
+      factory_line_id: selectedFactory.line.id,
+      company_name: selectedFactory.factory.company_name,
+      plant_name: selectedFactory.factory.plant_name,
+      department: selectedFactory.line.department,
+      line_name: selectedFactory.line.line_name,
+    })
+  }
+
+  // Clear assignment
+  const handleClearAssignment = () => {
+    if (!confirm('派遣先の設定を解除しますか？')) return
+
+    assignMutation.mutate({
+      factory_id: undefined as any,
+      factory_line_id: undefined as any,
+      company_name: undefined,
+      plant_name: undefined,
+      department: undefined,
+      line_name: undefined,
+    })
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -322,6 +383,125 @@ export default function EditEmployeePage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* 派遣先情報 (Assignment) */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                派遣先情報
+              </h2>
+              {!isEditingAssignment && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAssignment(true)}
+                  className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  変更
+                </button>
+              )}
+            </div>
+
+            {!isEditingAssignment ? (
+              // Display current assignment
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    派遣先
+                  </label>
+                  <p className="px-4 py-2 bg-gray-100 rounded-lg text-gray-900">
+                    {employee.company_name || '未設定'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    工場
+                  </label>
+                  <p className="px-4 py-2 bg-gray-100 rounded-lg text-gray-900">
+                    {employee.plant_name || '未設定'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    配属先
+                  </label>
+                  <p className="px-4 py-2 bg-gray-100 rounded-lg text-gray-900">
+                    {employee.department || '未設定'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ライン
+                  </label>
+                  <p className="px-4 py-2 bg-gray-100 rounded-lg text-gray-900">
+                    {employee.line_name || '未設定'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Edit assignment
+              <div className="space-y-4">
+                <FactoryCascadeSelector
+                  onSelect={handleFactorySelect}
+                  className="mb-4"
+                />
+
+                {selectedFactory && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 font-medium mb-2">選択中:</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-600">派遣先:</span>{' '}
+                        <span className="font-medium">{selectedFactory.factory.company_name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">工場:</span>{' '}
+                        <span className="font-medium">{selectedFactory.factory.plant_name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">配属先:</span>{' '}
+                        <span className="font-medium">{selectedFactory.line.department || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">ライン:</span>{' '}
+                        <span className="font-medium">{selectedFactory.line.line_name || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveAssignment}
+                    disabled={!selectedFactory || assignMutation.isPending}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                  >
+                    {assignMutation.isPending ? '保存中...' : '保存'}
+                  </button>
+                  {employee.factory_id && (
+                    <button
+                      type="button"
+                      onClick={handleClearAssignment}
+                      disabled={assignMutation.isPending}
+                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:bg-gray-400"
+                    >
+                      解除
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingAssignment(false)
+                      setSelectedFactory(null)
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Employment Info */}
