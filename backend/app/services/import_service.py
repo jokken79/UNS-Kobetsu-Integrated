@@ -3,8 +3,10 @@ Import Service - データインポートサービス
 
 Handles importing factories and employees from JSON and Excel files.
 Provides preview/validation before actual import.
+Automatically links employees to factories and lines during import.
 """
 import json
+import re
 from datetime import date, datetime
 from decimal import Decimal
 from io import BytesIO
@@ -16,6 +18,59 @@ from sqlalchemy.orm import Session
 
 from app.models.factory import Factory, FactoryLine
 from app.models.employee import Employee
+
+
+# Manual mapping for employee company_name -> (factory_company, factory_plant)
+# This handles cases where automatic matching would fail
+EMPLOYEE_TO_FACTORY_MAPPING = {
+    # 高雄工業 variations
+    "高雄工業 岡山": ("高雄工業株式会社", "岡山工場"),
+    "高雄工業 本社": ("高雄工業株式会社", "本社工場"),
+    "高雄工業 海南第一": ("高雄工業株式会社", "海南第一工場"),
+    "高雄工業 海南第二": ("高雄工業株式会社", "海南第二工場"),
+    "高雄工業 静岡": ("高雄工業株式会社", "静岡工場"),
+
+    # 加藤木材工業
+    "加藤木材工業 本社": ("加藤木材工業株式会社", "本社工場"),
+    "加藤木材工業 春日井": ("加藤木材工業株式会社", "春日井工場"),
+
+    # ユアサ工機
+    "ユアサ工機 新城": ("ユアサ工機株式会社", "新城工場"),
+    "ユアサ工機 御津": ("ユアサ工機株式会社", "本社工場"),
+
+    # Simple matches
+    "瑞陵精機": ("瑞陵精機株式会社", "恵那工場"),
+    "三幸技研": ("三幸技研株式会社", "本社工場"),
+    "六甲電子": ("六甲電子株式会社", "本社工場"),
+    "川原鉄工所": ("株式会社川原鉄工所", "本社工場"),
+    "オーツカ": ("株式会社オーツカ", "関ケ原工場"),
+    "ピーエムアイ": ("ピーエムアイ有限会社", "本社工場"),
+    "セイビテック": ("セイビテック株式会社", ""),
+
+    # Half-width katakana variations
+    "ﾃｨｰｹｰｴﾝｼﾞﾆｱﾘﾝｸﾞ": ("ティーケーエンジニアリング株式会社", "海南第二工場"),
+    "ﾌｪﾆﾃｯｸｾﾐｺﾝﾀﾞｸﾀｰ 岡山": ("フェニテックセミコンダクター(株)", "鹿児島工場"),
+
+    # 美鈴工業
+    "美鈴工業 本社": ("株式会社美鈴工業", "本社工場"),
+    "美鈴工業 本庄": ("株式会社美鈴工業", "本社工場"),
+
+    # PATEC
+    "PATEC": ("PATEC株式会社", "防府工場"),
+
+    # コーリツ
+    "コーリツ 本社": ("株式会社コーリツ", "本社工場"),
+    "コーリツ 乙川": ("株式会社コーリツ", "乙川工場"),
+    "コーリツ 亀崎": ("株式会社コーリツ", "亀崎工場"),
+    "コーリツ 州の崎": ("株式会社コーリツ", "州の崎工場"),
+
+    # プレテック
+    "プレテック": ("プレテック株式会社", "本社工場"),
+
+    # ワーク
+    "ワーク 堺": ("株式会社ワーク", "堺工場"),
+    "ワーク 志紀": ("株式会社ワーク", "志紀工場"),
+}
 
 
 class ImportValidationError:
@@ -67,6 +122,135 @@ class ImportService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    # ========================================
+    # FACTORY/LINE LOOKUP (for employee linking)
+    # ========================================
+
+    def _normalize_company_name(self, name: str) -> str:
+        """Normalize company name for matching."""
+        if not name:
+            return ""
+        # Remove common suffixes
+        name = re.sub(r'株式会社|有限会社|\(株\)|（株）', '', name)
+        # Remove whitespace
+        name = name.strip()
+        return name
+
+    def _find_factory_for_employee(self, company_name: str) -> Optional[Factory]:
+        """
+        Find matching factory for employee company_name.
+
+        Uses manual mapping first, then fuzzy matching.
+        """
+        if not company_name:
+            return None
+
+        company_name = company_name.strip()
+
+        # Check manual mapping first
+        if company_name in EMPLOYEE_TO_FACTORY_MAPPING:
+            company, plant = EMPLOYEE_TO_FACTORY_MAPPING[company_name]
+            normalized_company = self._normalize_company_name(company)
+
+            # Try exact plant match
+            factory = self.db.query(Factory).filter(
+                Factory.company_name.contains(normalized_company),
+                Factory.plant_name == plant
+            ).first()
+
+            if not factory and plant:
+                # Try without plant filter
+                factory = self.db.query(Factory).filter(
+                    Factory.company_name.contains(normalized_company)
+                ).first()
+
+            return factory
+
+        # Fuzzy matching
+        normalized = self._normalize_company_name(company_name)
+
+        # Split by space to get company and plant parts
+        parts = company_name.split()
+        if len(parts) >= 2:
+            company_part = parts[0]
+            plant_part = parts[1] if len(parts) > 1 else ""
+
+            # Try to find factory matching both parts
+            factory = self.db.query(Factory).filter(
+                Factory.company_name.contains(company_part),
+                Factory.plant_name.contains(plant_part)
+            ).first()
+
+            if factory:
+                return factory
+
+        # Last resort: just match company name
+        factory = self.db.query(Factory).filter(
+            Factory.company_name.contains(normalized)
+        ).first()
+
+        return factory
+
+    def _find_factory_line_for_employee(
+        self, factory_id: int, department: str, line_name: str
+    ) -> Optional[FactoryLine]:
+        """
+        Find matching factory line based on department and line_name.
+
+        Priority:
+        1. Exact match (department + line_name)
+        2. Line name match only
+        3. Department match only
+        4. First available line
+        """
+        if not factory_id:
+            return None
+
+        query = self.db.query(FactoryLine).filter(FactoryLine.factory_id == factory_id)
+
+        # Try exact match first
+        if department and line_name:
+            line = query.filter(
+                FactoryLine.department == department,
+                FactoryLine.line_name == line_name
+            ).first()
+            if line:
+                return line
+
+        # Try line_name match
+        if line_name:
+            line = query.filter(FactoryLine.line_name == line_name).first()
+            if line:
+                return line
+
+        # Try department match
+        if department:
+            line = query.filter(FactoryLine.department == department).first()
+            if line:
+                return line
+
+        # Return first available line if no match
+        return query.first()
+
+    def _link_employee_to_factory(
+        self, employee: Employee, company_name: str, department: str, line_name: str
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Link employee to factory and factory_line based on their assignment info.
+
+        Returns:
+            (factory_id, factory_line_id) or (None, None) if no match
+        """
+        factory = self._find_factory_for_employee(company_name)
+        if not factory:
+            return None, None
+
+        factory_line = self._find_factory_line_for_employee(
+            factory.id, department, line_name
+        )
+
+        return factory.id, factory_line.id if factory_line else None
 
     # ========================================
     # FACTORY IMPORT
@@ -633,7 +817,7 @@ class ImportService:
         # Get status from data or default to active
         status = data.get("status", "active")
 
-        return Employee(
+        employee = Employee(
             employee_number=str(data.get("employee_number", "")).strip(),
             full_name_kanji=clean_string(data.get("full_name_kanji")) or "Unknown",
             full_name_kana=clean_string(data.get("full_name_kana")) or clean_string(data.get("full_name_kanji")) or "Unknown",
@@ -667,6 +851,20 @@ class ImportService:
             notes=clean_string(data.get("notes")),
             status=status
         )
+
+        # Auto-link employee to factory and factory_line
+        company_name = clean_string(data.get("company_name"))
+        department = clean_string(data.get("department"))
+        line_name = clean_string(data.get("line_name"))
+
+        if company_name:
+            factory_id, factory_line_id = self._link_employee_to_factory(
+                employee, company_name, department, line_name
+            )
+            employee.factory_id = factory_id
+            employee.factory_line_id = factory_line_id
+
+        return employee
 
     def _update_employee(self, employee: Employee, data: dict):
         """Update existing employee with new data."""
@@ -713,6 +911,18 @@ class ImportService:
             employee.termination_date = parse_date(data["termination_date"])
             if employee.termination_date:
                 employee.status = "resigned"
+
+        # Auto-link employee to factory and factory_line if assignment changed
+        company_name = data.get("company_name") or employee.company_name
+        department = data.get("department") or employee.department
+        line_name = data.get("line_name") or employee.line_name
+
+        if company_name:
+            factory_id, factory_line_id = self._link_employee_to_factory(
+                employee, company_name, department, line_name
+            )
+            employee.factory_id = factory_id
+            employee.factory_line_id = factory_line_id
 
     # ========================================
     # FACTORY BULK IMPORT FROM JSON FILES
