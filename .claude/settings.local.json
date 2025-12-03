@@ -24,7 +24,9 @@
       "Bash(powershell.exe -Command \"docker exec uns-kobetsu-backend ls -la /network_data/config/factories\")",
       "Bash(powershell.exe -Command \"docker exec uns-kobetsu-backend cat ''/network_data/config/factories/株式会社美鈴工業_本社工場.json''\")",
       "Bash(winpty docker exec uns-kobetsu-backend alembic current)",
-      "Bash(winpty docker exec:*)"
+      "Bash(winpty docker exec:*)",
+      "Bash(claude mcp:*)",
+      "Bash(env)"
     ],
     "deny": [],
     "ask": []

@@ -148,3 +148,5 @@ dump.rdb
 *.seed
 *.pid.lock
 .husky/
+tmp_login.json
+nul

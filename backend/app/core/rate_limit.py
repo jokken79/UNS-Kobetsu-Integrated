@@ -18,7 +18,7 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["100 per minute"],  # Global default: 100 requests per minute
     storage_uri=None,  # Using in-memory storage for local development
-    headers_enabled=True,  # Enable rate limit headers in responses
+    headers_enabled=False,  # Disable automatic headers in dev to avoid response injection issues
 )
 
 
