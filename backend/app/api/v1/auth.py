@@ -28,8 +28,8 @@ router = APIRouter()
 
 # Request/Response Models
 class LoginRequest(BaseModel):
-    """Login request body. Uses a plain string for email to allow simple usernames like 'admin' in local dev."""
-    email: str
+    """Login request body."""
+    email: EmailStr
     password: str
 
 
