@@ -422,7 +422,7 @@ export function KobetsuFormHybrid({ initialData, onSubmit, isLoading }: KobetsuF
           disabled={isLoading}
           className="btn-primary"
         >
-          {isLoading ? '作成中...' : '契約書を作成'}
+          {isLoading ? '処理中...' : '契約書を作成'}
         </button>
       </div>
     </form>

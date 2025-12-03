@@ -1,6 +1,7 @@
 'use client'
 
 import type { KobetsuStats as StatsType } from '@/types'
+import { SkeletonStats } from '@/components/common/Skeleton'
 
 interface KobetsuStatsProps {
   stats?: StatsType
@@ -107,19 +108,7 @@ export function KobetsuStats({ stats, isLoading }: KobetsuStatsProps) {
   ]
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="skeleton w-12 h-12 rounded-xl" />
-            </div>
-            <div className="skeleton h-8 w-20 mb-2" />
-            <div className="skeleton h-4 w-16" />
-          </div>
-        ))}
-      </div>
-    )
+    return <SkeletonStats count={6} />
   }
 
   return (

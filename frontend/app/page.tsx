@@ -5,6 +5,12 @@ import { useQuery } from '@tanstack/react-query'
 import { kobetsuApi } from '@/lib/api'
 import { KobetsuStats } from '@/components/kobetsu/KobetsuStats'
 import { KobetsuTable } from '@/components/kobetsu/KobetsuTable'
+import { SkeletonListItem } from '@/components/common/Skeleton'
+import {
+  ContractsByMonthChart,
+  ContractsByStatusChart,
+  EmployeesByFactoryChart,
+} from '@/components/dashboard'
 
 // SVG Icons
 const Icons = {
@@ -155,6 +161,75 @@ export default function HomePage() {
       {/* Statistics Cards */}
       <KobetsuStats stats={stats} isLoading={statsLoading} />
 
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Contracts by Month Chart */}
+        <div className="card">
+          <div className="card-header">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                <Icons.ChartBar />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  月別契約書作成数
+                </h2>
+                <p className="text-sm text-gray-500">過去6ヶ月の推移</p>
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="h-64">
+              <ContractsByMonthChart className="h-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Contracts by Status Chart */}
+        <div className="card">
+          <div className="card-header">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Icons.ChartBar />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  契約書ステータス
+                </h2>
+                <p className="text-sm text-gray-500">現在の状況</p>
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="h-64">
+              <ContractsByStatusChart className="h-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Employees by Factory Chart */}
+        <div className="card lg:col-span-2">
+          <div className="card-header">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
+                <Icons.Users />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  派遣先別従業員数 (上位5社)
+                </h2>
+                <p className="text-sm text-gray-500">現在配属中の従業員</p>
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="h-64">
+              <EmployeesByFactoryChart className="h-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Alert Banners */}
       {(conflictAlerts?.length > 0 || expiringAlerts?.length > 0) && (
         <div className="space-y-3">
@@ -244,13 +319,7 @@ export default function HomePage() {
             {contractsLoading ? (
               <div className="p-6 space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="skeleton w-10 h-10 rounded-lg" />
-                    <div className="flex-1">
-                      <div className="skeleton h-4 w-32 mb-2" />
-                      <div className="skeleton h-3 w-24" />
-                    </div>
-                  </div>
+                  <SkeletonListItem key={i} />
                 ))}
               </div>
             ) : recentContracts?.items?.length ? (

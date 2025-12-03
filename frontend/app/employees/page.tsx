@@ -1,15 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { employeeApi } from '@/lib/api'
 import type { EmployeeListItem } from '@/types'
+import { SkeletonStats, SkeletonTable } from '@/components/common/Skeleton'
 
 export default function EmployeesPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resigned'>('all')
+  const [companyFilter, setCompanyFilter] = useState<string>('')
+  const [departmentFilter, setDepartmentFilter] = useState<string>('')
+  const [lineFilter, setLineFilter] = useState<string>('')
 
   // Fetch employees
   const { data: employees = [], isLoading } = useQuery({
@@ -27,7 +31,77 @@ export default function EmployeesPage() {
     queryFn: () => employeeApi.getStats()
   })
 
-  const filteredEmployees = employees
+  // Extract unique filter options from employees
+  const filterOptions = useMemo(() => {
+    const companies = new Set<string>()
+    const departments = new Set<string>()
+    const lines = new Set<string>()
+
+    employees.forEach((emp) => {
+      if (emp.company_name) companies.add(emp.company_name)
+      if (emp.department) departments.add(emp.department)
+      if (emp.line_name) lines.add(emp.line_name)
+    })
+
+    return {
+      companies: Array.from(companies).sort(),
+      departments: Array.from(departments).sort(),
+      lines: Array.from(lines).sort()
+    }
+  }, [employees])
+
+  // Filter employees by company, department, line
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      if (companyFilter && emp.company_name !== companyFilter) return false
+      if (departmentFilter && emp.department !== departmentFilter) return false
+      if (lineFilter && emp.line_name !== lineFilter) return false
+      return true
+    })
+  }, [employees, companyFilter, departmentFilter, lineFilter])
+
+  // Reset dependent filters when parent changes
+  const handleCompanyChange = (value: string) => {
+    setCompanyFilter(value)
+    setDepartmentFilter('')
+    setLineFilter('')
+  }
+
+  const handleDepartmentChange = (value: string) => {
+    setDepartmentFilter(value)
+    setLineFilter('')
+  }
+
+  // Get filtered options based on current selections
+  const filteredDepartments = useMemo(() => {
+    if (!companyFilter) return filterOptions.departments
+    const depts = new Set<string>()
+    employees.forEach((emp) => {
+      if (emp.company_name === companyFilter && emp.department) {
+        depts.add(emp.department)
+      }
+    })
+    return Array.from(depts).sort()
+  }, [employees, companyFilter, filterOptions.departments])
+
+  const filteredLines = useMemo(() => {
+    const lines = new Set<string>()
+    employees.forEach((emp) => {
+      const matchCompany = !companyFilter || emp.company_name === companyFilter
+      const matchDept = !departmentFilter || emp.department === departmentFilter
+      if (matchCompany && matchDept && emp.line_name) {
+        lines.add(emp.line_name)
+      }
+    })
+    return Array.from(lines).sort()
+  }, [employees, companyFilter, departmentFilter])
+
+  // Clear all filters
+  const clearFilters = () => {
+    setCompanyFilter('')
+    setDepartmentFilter('')
+    setLineFilter('')
+  }
 
   const handleRowClick = (employeeId: number) => {
     router.push(`/employees/${employeeId}`)
@@ -56,7 +130,9 @@ export default function EmployeesPage() {
       </div>
 
       {/* Stats Cards */}
-      {stats && (
+      {isLoading ? (
+        <SkeletonStats count={4} className="grid-cols-1 md:grid-cols-4 xl:grid-cols-4 mb-6" />
+      ) : stats ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
@@ -125,11 +201,11 @@ export default function EmployeesPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               検索
@@ -158,16 +234,122 @@ export default function EmployeesPage() {
               <option value="resigned">退社済み</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              派遣先
+            </label>
+            <select
+              value={companyFilter}
+              onChange={(e) => handleCompanyChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="派遣先フィルター"
+            >
+              <option value="">すべての派遣先</option>
+              {filterOptions.companies.map((company) => (
+                <option key={company} value={company}>{company}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              配属先
+            </label>
+            <select
+              value={departmentFilter}
+              onChange={(e) => handleDepartmentChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="配属先フィルター"
+            >
+              <option value="">すべての配属先</option>
+              {filteredDepartments.map((dept) => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ライン
+            </label>
+            <select
+              value={lineFilter}
+              onChange={(e) => setLineFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="ラインフィルター"
+            >
+              <option value="">すべてのライン</option>
+              {filteredLines.map((line) => (
+                <option key={line} value={line}>{line}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Clear filters button */}
+          {(companyFilter || departmentFilter || lineFilter) && (
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                フィルターをクリア
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Active filters summary */}
+        {(companyFilter || departmentFilter || lineFilter) && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-sm text-gray-500">絞り込み中:</span>
+              {companyFilter && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                  派遣先: {companyFilter}
+                  <button
+                    type="button"
+                    onClick={() => handleCompanyChange('')}
+                    className="ml-2 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {departmentFilter && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                  配属先: {departmentFilter}
+                  <button
+                    type="button"
+                    onClick={() => handleDepartmentChange('')}
+                    className="ml-2 text-green-600 hover:text-green-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {lineFilter && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
+                  ライン: {lineFilter}
+                  <button
+                    type="button"
+                    onClick={() => setLineFilter('')}
+                    className="ml-2 text-purple-600 hover:text-purple-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Employee List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-gray-600 mt-4">読み込み中...</p>
-          </div>
+          <SkeletonTable rows={10} columns={10} />
         ) : filteredEmployees.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -202,6 +384,12 @@ export default function EmployeesPage() {
                     派遣先
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    配属先
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ライン
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ステータス
                   </th>
                 </tr>
@@ -234,6 +422,12 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {employee.company_name || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {employee.department || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {employee.line_name || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

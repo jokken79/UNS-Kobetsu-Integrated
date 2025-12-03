@@ -268,6 +268,52 @@ export const kobetsuApi = {
     return response.data
   },
 
+  // Group employees by rate
+  groupByRate: async (employeeIds: number[]): Promise<{
+    has_multiple_rates: boolean
+    groups: Array<{
+      hourly_rate: number
+      billing_rate?: number
+      employee_count: number
+      employees: Array<{
+        id: number
+        employee_number: string
+        full_name_kana: string
+        full_name_kanji?: string
+        hourly_rate?: number
+        billing_rate?: number
+        department?: string
+        line_name?: string
+      }>
+    }>
+    total_employees: number
+    suggested_contracts: number
+    message: string
+  }> => {
+    const response = await apiClient.post('/kobetsu/group-by-rate', { employee_ids: employeeIds })
+    return response.data
+  },
+
+  // Batch create multiple contracts
+  batchCreate: async (data: {
+    factory_id: number
+    base_contract_data: Partial<KobetsuCreate>
+    groups: Array<{
+      employee_ids: number[]
+      hourly_rate: number
+      billing_rate?: number
+    }>
+  }): Promise<{
+    success: boolean
+    contracts_created: number
+    contract_ids: number[]
+    contract_numbers: string[]
+    message: string
+  }> => {
+    const response = await apiClient.post('/kobetsu/batch-create', data)
+    return response.data
+  },
+
   // ========================================
   // Smart Assignment API - 配属推奨システム
   // ========================================

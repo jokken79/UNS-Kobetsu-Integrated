@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { factoryApi } from '@/lib/api'
 import type { FactoryUpdate, FactoryLineUpdate, FactoryLineCreate } from '@/types'
+import { Breadcrumbs, dashboardBreadcrumb } from '@/components/common/Breadcrumbs'
 
 interface FactoryLine {
   id: number
@@ -478,6 +479,16 @@ export default function EditFactoryPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-5xl mx-auto">
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          items={[
+            dashboardBreadcrumb,
+            { label: '派遣先企業', href: '/factories' },
+            { label: factory.company_name || '工場詳細' }
+          ]}
+          className="mb-6"
+        />
+
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>

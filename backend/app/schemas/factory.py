@@ -59,6 +59,7 @@ class FactoryLineBase(BaseModel):
     department: Optional[str] = Field(None, description="配属先")
     line_name: Optional[str] = Field(None, description="ライン名")
     supervisor_department: Optional[str] = None
+    supervisor_position: Optional[str] = Field(None, description="役職")
     supervisor_name: Optional[str] = None
     supervisor_phone: Optional[str] = None
     job_description: Optional[str] = Field(None, description="仕事内容")

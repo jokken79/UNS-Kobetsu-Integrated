@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import { factoryApi } from '@/lib/api'
 import type { FactoryCreate } from '@/types'
+import { Breadcrumbs, dashboardBreadcrumb } from '@/components/common/Breadcrumbs'
 
 export default function CreateFactoryPage() {
   const router = useRouter()
@@ -47,6 +48,16 @@ export default function CreateFactoryPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          items={[
+            dashboardBreadcrumb,
+            { label: '派遣先企業', href: '/factories' },
+            { label: '新規作成' }
+          ]}
+          className="mb-6"
+        />
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">新規工場登録</h1>

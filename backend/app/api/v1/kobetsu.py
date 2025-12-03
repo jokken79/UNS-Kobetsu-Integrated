@@ -33,6 +33,12 @@ from app.schemas.kobetsu_keiyakusho import (
     KobetsuKeiyakushoResponse,
     KobetsuKeiyakushoList,
     KobetsuKeiyakushoStats,
+    RateGroupingRequest,
+    RateGroupingResponse,
+    RateGroup,
+    EmployeeInGroup,
+    KobetsuBatchCreateRequest,
+    KobetsuBatchCreateResponse,
 )
 from app.api.v1.helpers import (
     get_contract_or_404,
@@ -1131,6 +1137,214 @@ async def validate_employee_compatibility(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+
+
+# ========================================
+# RATE GROUPING ENDPOINTS - 単価別グループ化
+# ========================================
+
+@router.post("/group-by-rate", response_model=RateGroupingResponse)
+async def group_employees_by_rate(
+    request: RateGroupingRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Group employees by their hourly rate (単価) for creating separate contracts.
+
+    Use this endpoint when you want to create multiple contracts from a selection
+    of employees, where each contract groups employees with the same hourly rate.
+
+    Example:
+        Input: employee_ids = [1, 2, 3, 4, 5]
+        - Employee 1, 2, 3 have hourly_rate = 1600
+        - Employee 4, 5 have hourly_rate = 1650
+
+        Output:
+        {
+            "total_employees": 5,
+            "groups": [
+                { "hourly_rate": 1650, "employee_count": 2, "employees": [...] },
+                { "hourly_rate": 1600, "employee_count": 3, "employees": [...] }
+            ],
+            "has_multiple_rates": true,
+            "suggested_contracts": 2,
+            "message": "5名を2つの契約に分割することを推奨します"
+        }
+    """
+    try:
+        # Fetch all requested employees
+        employees = db.query(Employee).filter(
+            Employee.id.in_(request.employee_ids)
+        ).all()
+
+        if not employees:
+            raise HTTPException(
+                status_code=404,
+                detail="指定された従業員が見つかりません"
+            )
+
+        # Check for missing IDs
+        found_ids = {e.id for e in employees}
+        missing_ids = set(request.employee_ids) - found_ids
+        if missing_ids:
+            raise HTTPException(
+                status_code=404,
+                detail=f"従業員ID {missing_ids} が見つかりません"
+            )
+
+        # Group by hourly_rate
+        from collections import defaultdict
+        rate_groups = defaultdict(list)
+
+        for emp in employees:
+            # Use 0 for employees without hourly_rate
+            rate = emp.hourly_rate if emp.hourly_rate is not None else Decimal("0")
+            rate_groups[rate].append(emp)
+
+        # Build response groups (sorted by rate descending)
+        groups = []
+        for rate in sorted(rate_groups.keys(), reverse=True):
+            emp_list = rate_groups[rate]
+            # Get billing_rate from first employee (assume same for group)
+            billing_rate = emp_list[0].billing_rate if emp_list else None
+
+            group = RateGroup(
+                hourly_rate=rate,
+                billing_rate=billing_rate,
+                employee_count=len(emp_list),
+                employees=[
+                    EmployeeInGroup(
+                        id=e.id,
+                        employee_number=e.employee_number,
+                        full_name_kana=e.full_name_kana,
+                        full_name_kanji=e.full_name_kanji,
+                        hourly_rate=e.hourly_rate,
+                        billing_rate=e.billing_rate,
+                        department=e.department,
+                        line_name=e.line_name,
+                        factory_line_id=e.factory_line_id,
+                    )
+                    for e in sorted(emp_list, key=lambda x: x.employee_number)
+                ]
+            )
+            groups.append(group)
+
+        has_multiple = len(groups) > 1
+        suggested = len(groups)
+
+        if has_multiple:
+            message = f"{len(employees)}名を{suggested}つの契約に分割することを推奨します"
+        else:
+            rate = groups[0].hourly_rate if groups else 0
+            message = f"{len(employees)}名全員が同じ単価（¥{rate:,.0f}）です"
+
+        return RateGroupingResponse(
+            total_employees=len(employees),
+            groups=groups,
+            has_multiple_rates=has_multiple,
+            suggested_contracts=suggested,
+            message=message,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"グループ化処理でエラーが発生しました: {str(e)}"
+        )
+
+
+@router.post("/batch-create", response_model=KobetsuBatchCreateResponse)
+async def batch_create_contracts(
+    request: KobetsuBatchCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Create multiple contracts in batch, one for each rate group.
+
+    This endpoint allows creating multiple 個別契約書 at once, where each
+    contract has employees with the same hourly rate.
+
+    Example:
+        Create 2 contracts from 5 employees:
+        - Contract 1: employees [1,2,3] with hourly_rate=1600
+        - Contract 2: employees [4,5] with hourly_rate=1650
+
+    All contracts share the same:
+        - Factory, work location, dates
+        - Work content, supervisor info
+        - Schedule (days, times, break)
+
+    Each contract has its own:
+        - Employee list
+        - Hourly rate (and billing rate)
+        - Number of workers (auto-calculated)
+        - Contract number (auto-generated)
+    """
+    try:
+        service = KobetsuService(db)
+        created_contracts = []
+
+        for idx, contract_item in enumerate(request.contracts):
+            # Calculate number of workers if not provided
+            num_workers = contract_item.number_of_workers or len(contract_item.employee_ids)
+
+            # Build create data for this contract
+            # We need to create a KobetsuKeiyakushoCreate-compatible dict
+            contract_data = KobetsuKeiyakushoCreate(
+                factory_id=request.factory_id,
+                employee_ids=contract_item.employee_ids,
+                contract_date=request.contract_date,
+                dispatch_start_date=request.dispatch_start_date,
+                dispatch_end_date=request.dispatch_end_date,
+                work_content=request.work_content,
+                responsibility_level=request.responsibility_level,
+                worksite_name=request.worksite_name,
+                worksite_address=request.worksite_address,
+                supervisor_department=request.supervisor_department,
+                supervisor_position=request.supervisor_position,
+                supervisor_name=request.supervisor_name,
+                supervisor_phone=request.supervisor_phone,
+                work_days=request.work_days,
+                work_start_time=request.work_start_time,
+                work_end_time=request.work_end_time,
+                break_time_minutes=request.break_time_minutes,
+                hourly_rate=contract_item.hourly_rate,
+                overtime_rate=contract_item.hourly_rate * Decimal("1.25"),  # Default overtime
+            )
+
+            # Create the contract
+            contract = service.create(contract_data)
+
+            created_contracts.append({
+                "id": contract.id,
+                "contract_number": contract.contract_number,
+                "hourly_rate": float(contract_item.hourly_rate),
+                "number_of_workers": num_workers,
+                "employee_ids": contract_item.employee_ids,
+            })
+
+        db.commit()
+
+        return KobetsuBatchCreateResponse(
+            success=True,
+            created_count=len(created_contracts),
+            contracts=created_contracts,
+            message=f"{len(created_contracts)}件の契約を作成しました",
+        )
+
+    except ContractValidationError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"一括作成でエラーが発生しました: {str(e)}"
+        )
 
 
 # ========================================

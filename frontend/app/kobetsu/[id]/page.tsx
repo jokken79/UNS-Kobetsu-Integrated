@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { kobetsuApi } from '@/lib/api'
 import { StatusBadge } from '@/components/kobetsu/StatusBadge'
+import { Breadcrumbs, dashboardBreadcrumb } from '@/components/common/Breadcrumbs'
 
 export default function KobetsuDetailPage() {
   const params = useParams()
@@ -76,6 +77,16 @@ export default function KobetsuDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        items={[
+          dashboardBreadcrumb,
+          { label: '個別契約書', href: '/kobetsu' },
+          { label: contract.contract_number }
+        ]}
+        className="mb-4"
+      />
+
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>

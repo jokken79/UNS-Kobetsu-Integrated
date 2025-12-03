@@ -1,233 +1,624 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { factoryApi } from '@/lib/api'
-import type { FactoryListItem } from '@/types'
+import { factoryApi, employeeApi } from '@/lib/api'
+import { FactoryTree } from '@/components/factory/FactoryTree'
+import { LineCard } from '@/components/factory/LineCard'
+import { Breadcrumbs } from '@/components/common/Breadcrumbs'
+import { SkeletonCard } from '@/components/common/Skeleton'
+import { useToastActions } from '@/components/common/ToastContext'
+import { useConfirmActions } from '@/components/common/ConfirmContext'
+import { useUpdateFactory, useDeleteFactory } from '@/hooks/useFactories'
+import type {
+  FactoryListItem,
+  FactoryResponse,
+  FactoryUpdate,
+  EmployeeResponse,
+  FactoryLineResponse
+} from '@/types'
 
 export default function FactoriesPage() {
   const router = useRouter()
-  const [search, setSearch] = useState('')
+  const [selectedFactoryId, setSelectedFactoryId] = useState<number | null>(null)
+  const [isEditingFactory, setIsEditingFactory] = useState(false)
+  const [factoryFormData, setFactoryFormData] = useState<FactoryUpdate>({})
+  const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set())
 
-  // Fetch factories
-  const { data: factories = [], isLoading } = useQuery({
-    queryKey: ['factories', search],
-    queryFn: () => factoryApi.getList({
-      search: search || undefined,
-      limit: 500
-    })
+  const toast = useToastActions()
+  const { confirmDelete } = useConfirmActions()
+
+  // Fetch all factories for tree
+  const { data: factories = [], isLoading: isLoadingFactories } = useQuery({
+    queryKey: ['factories', 'list'],
+    queryFn: () => factoryApi.getList({ limit: 500 }),
+    staleTime: 5 * 60 * 1000,
   })
 
-  // Group factories by company
-  const groupedFactories = factories.reduce((acc, factory) => {
-    if (!acc[factory.company_name]) {
-      acc[factory.company_name] = []
+  // Fetch selected factory details
+  const { data: factoryDetail, isLoading: isLoadingDetail } = useQuery({
+    queryKey: ['factories', selectedFactoryId],
+    queryFn: () => selectedFactoryId ? factoryApi.getById(selectedFactoryId) : null,
+    enabled: !!selectedFactoryId,
+  })
+
+  // Fetch employees for the selected factory
+  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
+    queryKey: ['employees', 'by-factory', selectedFactoryId],
+    queryFn: () => selectedFactoryId ? employeeApi.getList({ factory_id: selectedFactoryId, limit: 500 }) : [],
+    enabled: !!selectedFactoryId,
+  })
+
+  // Group employees by factory_line_id
+  const employeesByLine = useMemo(() => {
+    const grouped = new Map<number | null, EmployeeResponse[]>()
+    employees.forEach(emp => {
+      // Cast EmployeeListItem to EmployeeResponse for LineCard compatibility
+      const empAsResponse = emp as unknown as EmployeeResponse
+      const lineId = (emp as any).factory_line_id || null
+      const existing = grouped.get(lineId) || []
+      grouped.set(lineId, [...existing, empAsResponse])
+    })
+    return grouped
+  }, [employees])
+
+  // Mutations
+  const updateFactoryMutation = useUpdateFactory(selectedFactoryId!)
+  const deleteFactoryMutation = useDeleteFactory()
+
+  // Initialize form data when factory detail loads
+  useEffect(() => {
+    if (factoryDetail) {
+      setFactoryFormData({
+        company_name: factoryDetail.company_name,
+        company_address: factoryDetail.company_address,
+        company_phone: factoryDetail.company_phone,
+        plant_name: factoryDetail.plant_name,
+        plant_address: factoryDetail.plant_address,
+        plant_phone: factoryDetail.plant_phone,
+        client_responsible_department: factoryDetail.client_responsible_department,
+        client_responsible_name: factoryDetail.client_responsible_name,
+        client_responsible_phone: factoryDetail.client_responsible_phone,
+        client_complaint_department: factoryDetail.client_complaint_department,
+        client_complaint_name: factoryDetail.client_complaint_name,
+        client_complaint_phone: factoryDetail.client_complaint_phone,
+        conflict_date: factoryDetail.conflict_date,
+        break_minutes: factoryDetail.break_minutes,
+      })
     }
-    acc[factory.company_name].push(factory)
-    return acc
-  }, {} as Record<string, FactoryListItem[]>)
+  }, [factoryDetail])
 
-  const companyNames = Object.keys(groupedFactories).sort()
+  // Auto-select first factory on load (optional)
+  useEffect(() => {
+    if (!selectedFactoryId && factories.length > 0) {
+      setSelectedFactoryId(factories[0].id)
+    }
+  }, [factories, selectedFactoryId])
 
-  const handleRowClick = (factoryId: number) => {
-    router.push(`/factories/${factoryId}`)
+  const handleSelectFactory = (factoryId: number) => {
+    setSelectedFactoryId(factoryId)
+    setIsEditingFactory(false)
+    setExpandedLines(new Set()) // Reset expanded lines
   }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">派遣先企業・工場管理</h1>
-          <p className="text-gray-600 mt-2">
-            派遣先企業と工場の情報を確認・管理
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => router.push('/factories/create')}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  const handleCreateNew = () => {
+    router.push('/factories/create')
+  }
+
+  const handleEditFactory = () => {
+    setIsEditingFactory(true)
+  }
+
+  const handleCancelEditFactory = () => {
+    setIsEditingFactory(false)
+    // Reset form to original data
+    if (factoryDetail) {
+      setFactoryFormData({
+        company_name: factoryDetail.company_name,
+        company_address: factoryDetail.company_address,
+        company_phone: factoryDetail.company_phone,
+        plant_name: factoryDetail.plant_name,
+        plant_address: factoryDetail.plant_address,
+        plant_phone: factoryDetail.plant_phone,
+        client_responsible_department: factoryDetail.client_responsible_department,
+        client_responsible_name: factoryDetail.client_responsible_name,
+        client_responsible_phone: factoryDetail.client_responsible_phone,
+        client_complaint_department: factoryDetail.client_complaint_department,
+        client_complaint_name: factoryDetail.client_complaint_name,
+        client_complaint_phone: factoryDetail.client_complaint_phone,
+        conflict_date: factoryDetail.conflict_date,
+        break_minutes: factoryDetail.break_minutes,
+      })
+    }
+  }
+
+  const handleSaveFactory = async () => {
+    if (!selectedFactoryId) return
+
+    try {
+      await updateFactoryMutation.mutateAsync(factoryFormData)
+      toast.success('工場情報を更新しました')
+      setIsEditingFactory(false)
+    } catch (error) {
+      console.error('Failed to update factory:', error)
+      toast.error('更新に失敗しました')
+    }
+  }
+
+  const handleDeleteFactory = async () => {
+    if (!selectedFactoryId || !factoryDetail) return
+
+    const confirmed = await confirmDelete(
+      `${factoryDetail.company_name} - ${factoryDetail.plant_name}`
+    )
+
+    if (confirmed) {
+      try {
+        await deleteFactoryMutation.mutateAsync(selectedFactoryId)
+        toast.success('工場を削除しました')
+        setSelectedFactoryId(null)
+      } catch (error) {
+        console.error('Failed to delete factory:', error)
+        toast.error('削除に失敗しました')
+      }
+    }
+  }
+
+  const handleFieldChange = (field: keyof FactoryUpdate, value: string | number) => {
+    setFactoryFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleEditLine = (lineId: number) => {
+    // Navigate to line edit page or open modal
+    router.push(`/factories/lines/${lineId}/edit`)
+  }
+
+  const handleDeleteLine = async (lineId: number) => {
+    try {
+      await factoryApi.deleteLine(lineId)
+      toast.success('ラインを削除しました')
+      // Refetch factory details to update lines
+      window.location.reload() // Simple reload for now
+    } catch (error) {
+      console.error('Failed to delete line:', error)
+      toast.error('ラインの削除に失敗しました')
+    }
+  }
+
+  const toggleLineExpand = (lineId: number) => {
+    const newExpanded = new Set(expandedLines)
+    if (newExpanded.has(lineId)) {
+      newExpanded.delete(lineId)
+    } else {
+      newExpanded.add(lineId)
+    }
+    setExpandedLines(newExpanded)
+  }
+
+  // Empty state component
+  const EmptyState = ({ message }: { message: string }) => (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+          <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
-          新規工場
-        </button>
+        </div>
+        <p className="text-gray-500 text-lg">{message}</p>
       </div>
+    </div>
+  )
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">企業数</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">
-                {companyNames.length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-          </div>
-        </div>
+  return (
+    <>
+      {/* Breadcrumbs */}
+      <Breadcrumbs items={[
+        { label: 'ダッシュボード', href: '/' },
+        { label: '派遣先企業・工場管理', href: '/factories' }
+      ]} />
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">工場数</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">
-                {factories.length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+      {/* Main Content */}
+      <div className="flex h-[calc(100vh-120px)] bg-gray-50">
+        {/* Left Panel - Factory Tree */}
+        <FactoryTree
+          factories={factories}
+          selectedFactoryId={selectedFactoryId}
+          onSelectFactory={handleSelectFactory}
+          onCreateNew={handleCreateNew}
+          isLoading={isLoadingFactories}
+        />
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">ライン数</p>
-              <p className="text-3xl font-bold text-purple-600 mt-1">
-                {factories.reduce((sum, f) => sum + (f.lines?.length || 0), 0)}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* Right Panel - Factory Details */}
+        <div className="flex-1 overflow-y-auto bg-white">
+          {selectedFactoryId && factoryDetail ? (
+            <div className="p-6">
+              {/* Factory Header */}
+              <div className="border-b pb-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🏢</span>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {factoryDetail.company_name} - {factoryDetail.plant_name}
+                      </h2>
+                      <p className="text-sm text-gray-600 mt-1">
+                        工場ID: {factoryDetail.factory_id} |
+                        {factoryDetail.lines?.length || 0}ライン |
+                        {employees.length}名配属
+                      </p>
+                    </div>
+                  </div>
+                  {!isEditingFactory && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleEditFactory}
+                        className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={handleDeleteFactory}
+                        className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            検索
-          </label>
-          <input
-            type="text"
-            placeholder="企業名、工場名で検索..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-      </div>
-
-      {/* Factory List */}
-      <div className="space-y-6">
-        {isLoading ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-gray-600 mt-4">読み込み中...</p>
-          </div>
-        ) : companyNames.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center text-gray-500">
-            <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            派遣先企業が見つかりません
-          </div>
-        ) : (
-          companyNames.map(companyName => {
-            const companyFactories = groupedFactories[companyName]
-            const totalLines = companyFactories.reduce((sum, f) => sum + (f.lines?.length || 0), 0)
-
-            return (
-              <div key={companyName} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {/* Company Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-white">{companyName}</h2>
-                        <p className="text-blue-100 text-sm">
-                          {companyFactories.length}工場 • {totalLines}ライン
-                        </p>
-                      </div>
+              {/* Factory Information Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Company Info Card */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">📋</span>
+                    <h3 className="font-semibold">会社情報</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-sm text-gray-600">会社名</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.company_name || ''}
+                          onChange={(e) => handleFieldChange('company_name', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.company_name}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">住所</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.company_address || ''}
+                          onChange={(e) => handleFieldChange('company_address', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.company_address || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">電話</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.company_phone || ''}
+                          onChange={(e) => handleFieldChange('company_phone', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.company_phone || '-'}</p>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Factories Table */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          工場名
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ライン数
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          配属人数
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          有効契約数
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ステータス
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {companyFactories.map((factory) => (
-                        <tr
-                          key={factory.id}
-                          onClick={() => handleRowClick(factory.id)}
-                          className="hover:bg-blue-50 transition-colors cursor-pointer"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{factory.plant_name}</div>
-                            <div className="text-sm text-gray-500">{factory.factory_id}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {factory.lines?.length || 0}ライン
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {factory.employee_count || 0}名
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {factory.contract_count || 0}件
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              factory.is_active
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {factory.is_active ? '有効' : '無効'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Factory Info Card */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">📍</span>
+                    <h3 className="font-semibold">工場情報</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-sm text-gray-600">工場名</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.plant_name || ''}
+                          onChange={(e) => handleFieldChange('plant_name', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.plant_name}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">住所</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.plant_address || ''}
+                          onChange={(e) => handleFieldChange('plant_address', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.plant_address || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">電話</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.plant_phone || ''}
+                          onChange={(e) => handleFieldChange('plant_phone', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.plant_phone || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Responsible Persons */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">👤</span>
+                    <h3 className="font-semibold">派遣先責任者</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-sm text-gray-600">部署</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.client_responsible_department || ''}
+                          onChange={(e) => handleFieldChange('client_responsible_department', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.client_responsible_department || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">氏名</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.client_responsible_name || ''}
+                          onChange={(e) => handleFieldChange('client_responsible_name', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.client_responsible_name || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">電話</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.client_responsible_phone || ''}
+                          onChange={(e) => handleFieldChange('client_responsible_phone', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.client_responsible_phone || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Complaint Contact */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">📞</span>
+                    <h3 className="font-semibold">派遣先苦情担当</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-sm text-gray-600">部署</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.client_complaint_department || ''}
+                          onChange={(e) => handleFieldChange('client_complaint_department', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.client_complaint_department || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">氏名</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.client_complaint_name || ''}
+                          onChange={(e) => handleFieldChange('client_complaint_name', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.client_complaint_name || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">電話</label>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.client_complaint_phone || ''}
+                          onChange={(e) => handleFieldChange('client_complaint_phone', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.client_complaint_phone || '-'}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            )
-          })
-        )}
-      </div>
 
-      <div className="mt-4 text-sm text-gray-600 text-right">
-        表示件数: {companyNames.length}企業 • {factories.length}工場
+              {/* Other Information */}
+              <div className="flex flex-wrap gap-6 mb-6">
+                <div>
+                  <span className="text-sm text-gray-600">📅 抵触日:</span>
+                  {isEditingFactory ? (
+                    <input
+                      type="date"
+                      value={factoryFormData.conflict_date || ''}
+                      onChange={(e) => handleFieldChange('conflict_date', e.target.value)}
+                      className="ml-2 px-3 py-1 border border-gray-300 rounded-md"
+                    />
+                  ) : (
+                    <span className="font-medium ml-2">
+                      {factoryDetail.conflict_date ?
+                        new Date(factoryDetail.conflict_date).toLocaleDateString('ja-JP') :
+                        '未設定'
+                      }
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">⏰ 休憩:</span>
+                  {isEditingFactory ? (
+                    <input
+                      type="number"
+                      value={factoryFormData.break_minutes || 0}
+                      onChange={(e) => handleFieldChange('break_minutes', parseInt(e.target.value))}
+                      className="ml-2 px-3 py-1 border border-gray-300 rounded-md w-20"
+                      min="0"
+                    />
+                  ) : (
+                    <span className="font-medium ml-2">{factoryDetail.break_minutes || 0}分</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons for Factory Edit */}
+              {isEditingFactory && (
+                <div className="border-t pt-4 mb-6 flex justify-end gap-3">
+                  <button
+                    onClick={handleCancelEditFactory}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={updateFactoryMutation.isPending}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleSaveFactory}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    disabled={updateFactoryMutation.isPending}
+                  >
+                    {updateFactoryMutation.isPending ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        保存中...
+                      </>
+                    ) : (
+                      <>
+                        💾 保存する
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Production Lines Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">
+                    生産ライン ({factoryDetail.lines?.length || 0})
+                  </h3>
+                  {!isEditingFactory && (
+                    <button
+                      onClick={() => router.push(`/factories/${selectedFactoryId}/lines/create`)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      + ライン追加
+                    </button>
+                  )}
+                </div>
+
+                {/* LineCard Components */}
+                {isLoadingEmployees ? (
+                  <div className="space-y-3">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {factoryDetail.lines && factoryDetail.lines.length > 0 ? (
+                      factoryDetail.lines.map((line: FactoryLineResponse) => {
+                        const lineEmployees = employeesByLine.get(line.id) || []
+                        return (
+                          <LineCard
+                            key={line.id}
+                            line={line}
+                            employees={lineEmployees}
+                            baseRate={line.hourly_rate}
+                            onEdit={handleEditLine}
+                            onDelete={handleDeleteLine}
+                            isExpanded={expandedLines.has(line.id)}
+                            onToggleExpand={() => toggleLineExpand(line.id)}
+                          />
+                        )
+                      })
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-8 text-center">
+                        <span className="text-4xl mb-3 block">🏭</span>
+                        <p className="text-gray-600">生産ラインが登録されていません</p>
+                        <button
+                          onClick={() => router.push(`/factories/${selectedFactoryId}/lines/create`)}
+                          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          最初のラインを追加
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Employees without line assignment */}
+                    {employeesByLine.has(null) && employeesByLine.get(null)!.length > 0 && (
+                      <div className="mt-6 border-t pt-6">
+                        <h4 className="text-lg font-medium mb-3 text-gray-700">
+                          ライン未割当社員 ({employeesByLine.get(null)!.length}名)
+                        </h4>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {employeesByLine.get(null)!.map((emp) => (
+                              <div key={emp.id} className="bg-white rounded-md px-3 py-2 border border-gray-200">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {emp.employee_number}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  {emp.display_name || emp.full_name_kana || emp.full_name_kanji}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mt-3 text-sm text-yellow-700">
+                            これらの社員はラインに割り当てられていません。ライン管理から割り当ててください。
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <EmptyState message={isLoadingDetail ? "読み込み中..." : "左側から工場を選択してください"} />
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
