@@ -30,6 +30,8 @@ export default function DataManagementPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [previewData, setPreviewData] = useState<ImportResponse | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [batchResults, setBatchResults] = useState<ImportResponse[]>([])
   const queryClient = useQueryClient()
 
   // Fetch table statistics
@@ -38,17 +40,18 @@ export default function DataManagementPage() {
     queryFn: async () => {
       const [employeesRes, factoriesRes, kobetsuRes] = await Promise.all([
         fetch(`${API_URL}/employees/stats`).then(r => r.json()).catch(() => ({ total_employees: 0, active_employees: 0 })),
-        fetch(`${API_URL}/factories?limit=1`).then(r => r.json()).catch(() => []),
+        fetch(`${API_URL}/factories/stats`).then(r => r.json()).catch(() => ({ total_factories: 0 })),
         fetch(`${API_URL}/kobetsu?limit=1`).then(r => r.json()).catch(() => ({ items: [] })),
       ])
 
       // Get counts from various endpoints
       const employeeCount = employeesRes.total_employees || 0
       const activeEmployees = employeesRes.active_employees || 0
+      const factoryCount = factoriesRes.total_factories || 0
 
       return {
         employees: { total: employeeCount, active: activeEmployees },
-        factories: { total: Array.isArray(factoriesRes) ? factoriesRes.length : 0 },
+        factories: { total: factoryCount },
         kobetsu: { total: kobetsuRes.items?.length || 0 }
       }
     },
@@ -156,13 +159,25 @@ export default function DataManagementPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
-      handleFile(files[0])
+      // For factories with multiple JSON files
+      if (importType === 'factories' && files.length > 1) {
+        const fileArray = Array.from(files)
+        setSelectedFiles(fileArray)
+        setSelectedFile(null)
+        setPreviewData(null)
+        setBatchResults([])
+      } else {
+        // Single file (employees or single factory)
+        handleFile(files[0])
+      }
     }
   }
 
   const handleFile = (file: File) => {
     setSelectedFile(file)
+    setSelectedFiles([])
     setPreviewData(null)
+    setBatchResults([])
     previewMutation.mutate(file)
   }
 
@@ -176,9 +191,38 @@ export default function DataManagementPage() {
     }
   }
 
+  const handleBatchImport = async () => {
+    if (selectedFiles.length === 0) return
+
+    setBatchResults([])
+    let successCount = 0
+    let errorCount = 0
+
+    for (const file of selectedFiles) {
+      try {
+        const result = await importApi.previewFactories(file)
+        if (result.preview_data.length > 0) {
+          const executed = await importApi.executeFactoryImport(result.preview_data, importMode)
+          if (executed) {
+            setBatchResults(prev => [...prev, executed])
+            successCount++
+          }
+        }
+      } catch (error) {
+        console.error(`Error importing ${file.name}:`, error)
+        errorCount++
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['table-stats'] })
+    alert(`インポート完了!\n成功: ${successCount} ファイル\nエラー: ${errorCount} ファイル`)
+  }
+
   const handleReset = () => {
     setPreviewData(null)
     setSelectedFile(null)
+    setSelectedFiles([])
+    setBatchResults([])
     previewMutation.reset()
     executeMutation.reset()
     syncMutation.reset()
@@ -191,15 +235,15 @@ export default function DataManagementPage() {
 
       switch (tableName) {
         case 'employees':
-          url = `${API_URL}/employees?limit=10000&status=`
+          url = `${API_URL}/employees?limit=1500&status=`
           filename = 'employees_export.json'
           break
         case 'factories':
-          url = `${API_URL}/factories?limit=10000`
+          url = `${API_URL}/factories?limit=500`
           filename = 'factories_export.json'
           break
         case 'kobetsu':
-          url = `${API_URL}/kobetsu?limit=10000`
+          url = `${API_URL}/kobetsu?limit=500`
           filename = 'kobetsu_export.json'
           break
         default:
@@ -222,6 +266,72 @@ export default function DataManagementPage() {
     } catch (error) {
       console.error('Export failed:', error)
       alert('エクスポートに失敗しました')
+    }
+  }
+
+  const handleDeleteAll = async (tableName: string) => {
+    // Confirmación doble para operaciones peligrosas
+    const tableDisplayNames: Record<string, string> = {
+      'employees': '従業員マスタ',
+      'factories': '工場マスタ',
+      'kobetsu': '個別契約書'
+    }
+
+    const displayName = tableDisplayNames[tableName] || tableName
+    const confirmMessage = `⚠️ 警告: ${displayName}の全データを削除します。\n\nこの操作は取り消せません。本当に削除しますか？`
+
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    const doubleConfirm = prompt(`確認のため「削除」と入力してください:`)
+    if (doubleConfirm !== '削除') {
+      alert('キャンセルされました')
+      return
+    }
+
+    try {
+      let url = ''
+
+      switch (tableName) {
+        case 'employees':
+          url = `${API_URL}/employees/delete-all`
+          break
+        case 'factories':
+          url = `${API_URL}/factories/delete-all`
+          break
+        case 'kobetsu':
+          url = `${API_URL}/kobetsu/delete-all`
+          break
+        default:
+          return
+      }
+
+      // Get auth token from localStorage
+      const token = localStorage.getItem('access_token')
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `削除に失敗しました: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+
+      // Refresh stats
+      queryClient.invalidateQueries({ queryKey: ['table-stats'] })
+
+      alert(`✅ ${displayName}のデータを削除しました\n削除件数: ${result.deleted_count || 0}件`)
+    } catch (error) {
+      console.error('Delete all failed:', error)
+      alert(`❌ 削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`)
     }
   }
 
@@ -283,7 +393,7 @@ export default function DataManagementPage() {
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-3">{table.displayName}</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mb-3">
                     {table.viewUrl && (
                       <Link
                         href={table.viewUrl}
@@ -320,6 +430,16 @@ export default function DataManagementPage() {
                       </button>
                     )}
                   </div>
+                  {/* Delete All Button */}
+                  <button
+                    onClick={() => handleDeleteAll(table.name)}
+                    className="w-full px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-sm font-medium border border-red-200 flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    全データ削除
+                  </button>
                 </div>
               </div>
             ))}
@@ -469,7 +589,7 @@ export default function DataManagementPage() {
             </p>
             <p className="text-sm text-gray-500 mb-4">
               {importType === 'factories'
-                ? 'JSON または Excel (.xlsx, .xlsm)'
+                ? 'JSON または Excel (.xlsx, .xlsm) - 複数ファイル選択可能 ✨'
                 : 'Excel (.xlsx, .xlsm) - 社員台帳のDBGenzaiXシートを自動検出'}
             </p>
             <label className="inline-block">
@@ -480,6 +600,7 @@ export default function DataManagementPage() {
                 type="file"
                 className="hidden"
                 accept={importType === 'factories' ? '.json,.xlsx,.xls,.xlsm' : '.xlsx,.xls,.xlsm'}
+                multiple={importType === 'factories'}
                 onChange={handleFileSelect}
               />
             </label>
@@ -488,6 +609,27 @@ export default function DataManagementPage() {
               <p className="mt-4 text-sm text-gray-600">
                 選択中: {selectedFile.name}
               </p>
+            )}
+
+            {selectedFiles.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  選択中: {selectedFiles.length} ファイル
+                </p>
+                <div className="max-h-40 overflow-auto bg-gray-50 rounded p-3 text-xs">
+                  {selectedFiles.map((file, idx) => (
+                    <div key={idx} className="py-1 text-gray-600">
+                      {idx + 1}. {file.name}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleBatchImport}
+                  className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  🚀 {selectedFiles.length}ファイルを一括インポート
+                </button>
+              </div>
             )}
           </div>
 

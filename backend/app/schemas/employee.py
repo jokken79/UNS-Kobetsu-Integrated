@@ -199,16 +199,31 @@ class EmployeeListItem(BaseModel):
     plant_name: Optional[str] = None
     department: Optional[str] = None
     line_name: Optional[str] = None
+    position: Optional[str] = None
     hire_date: date
     hourly_rate: Optional[Decimal] = None  # 時給 (lo que pagamos al empleado)
     billing_rate: Optional[Decimal] = None  # 単価 (lo que la fábrica nos paga)
     status: str
     nationality: str = "ベトナム"
     visa_expiry_date: Optional[date] = None
+    date_of_birth: Optional[date] = None
     age: Optional[int] = None
 
     class Config:
         from_attributes = True
+
+    @field_validator('age', mode='before')
+    @classmethod
+    def calculate_age_from_dob(cls, v, info):
+        """Calculate age from date_of_birth, overriding stored age."""
+        data = info.data
+        if 'date_of_birth' in data and data['date_of_birth'] is not None:
+            dob = data['date_of_birth']
+            today = date.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            return age
+        # If no date_of_birth, keep whatever value (likely None)
+        return v
 
 
 class EmployeeStats(BaseModel):

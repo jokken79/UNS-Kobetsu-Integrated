@@ -84,40 +84,40 @@ export function FactoryTree({
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="w-[280px] bg-slate-800 h-full flex flex-col">
-        <div className="p-4 border-b border-slate-700">
-          <div className="h-10 bg-slate-700 rounded animate-pulse" />
+      <div className="w-[280px] bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 h-full flex flex-col">
+        <div className="p-4 border-b border-gray-200 dark:border-slate-700">
+          <div className="h-10 bg-gray-200 dark:bg-slate-700 rounded animate-pulse" />
         </div>
         <div className="flex-1 p-4 space-y-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="space-y-2">
-              <div className="h-8 bg-slate-700 rounded animate-pulse" />
+              <div className="h-8 bg-gray-200 dark:bg-slate-700 rounded animate-pulse" />
               <div className="ml-6 space-y-1">
-                <div className="h-7 bg-slate-700/50 rounded animate-pulse" />
-                <div className="h-7 bg-slate-700/50 rounded animate-pulse" />
+                <div className="h-7 bg-gray-100 dark:bg-slate-700/50 rounded animate-pulse" />
+                <div className="h-7 bg-gray-100 dark:bg-slate-700/50 rounded animate-pulse" />
               </div>
             </div>
           ))}
         </div>
-        <div className="p-4 border-t border-slate-700">
-          <div className="h-10 bg-slate-700 rounded animate-pulse" />
+        <div className="p-4 border-t border-gray-200 dark:border-slate-700">
+          <div className="h-10 bg-gray-200 dark:bg-slate-700 rounded animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-[280px] bg-slate-800 h-full flex flex-col">
+    <div className="w-[280px] bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 h-full flex flex-col">
       {/* Search Input */}
-      <div className="p-4 border-b border-slate-700">
+      <div className="p-4 border-b border-gray-200 dark:border-slate-700">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
           <input
             type="text"
             placeholder="検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 bg-slate-700 text-white placeholder-slate-400 rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            className="w-full pl-10 pr-3 py-2 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 rounded-lg border border-gray-300 dark:border-slate-600 focus:border-theme-600 focus:ring-1 focus:ring-theme-500 focus:outline-none"
           />
         </div>
       </div>
@@ -125,7 +125,7 @@ export function FactoryTree({
       {/* Tree Content */}
       <div className="flex-1 overflow-y-auto">
         {groupedFactories.length === 0 ? (
-          <div className="p-4 text-center text-slate-400">
+          <div className="p-4 text-center text-gray-500 dark:text-slate-400">
             {searchQuery ? '検索結果がありません' : '工場が登録されていません'}
           </div>
         ) : (
@@ -138,17 +138,18 @@ export function FactoryTree({
                   {/* Company Header */}
                   <button
                     onClick={() => toggleCompany(group.companyName)}
-                    className="w-full px-2 py-1.5 flex items-center justify-between text-white hover:bg-slate-700 rounded transition-colors"
+                    className="w-full px-2 py-1.5 flex items-center justify-between text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors"
+                    title={group.companyName}
                   >
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 min-w-0 flex-1">
                       {isExpanded ? (
-                        <ChevronDownIcon className="h-4 w-4 text-slate-400" />
+                        <ChevronDownIcon className="h-4 w-4 text-gray-500 dark:text-slate-400 flex-shrink-0" />
                       ) : (
-                        <ChevronRightIcon className="h-4 w-4 text-slate-400" />
+                        <ChevronRightIcon className="h-4 w-4 text-gray-500 dark:text-slate-400 flex-shrink-0" />
                       )}
-                      <span className="text-sm font-medium">{group.companyName}</span>
+                      <span className="text-sm font-medium truncate">{group.companyName}</span>
                     </div>
-                    <span className="text-xs text-slate-400">({group.totalCount})</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 flex-shrink-0 ml-2">({group.totalCount})</span>
                   </button>
 
                   {/* Factories List */}
@@ -164,9 +165,10 @@ export function FactoryTree({
                             onClick={() => onSelectFactory(factory.id)}
                             className={`w-full px-3 py-1.5 flex items-center space-x-2 rounded transition-colors ${
                               isSelected
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-300 hover:bg-slate-700'
+                                ? 'bg-theme-600 text-white'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                             }`}
+                            title={`${factory.plant_name}${factory.lines_count > 0 ? ` (${factory.lines_count}ライン)` : ''}`}
                           >
                             <span
                               className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -179,11 +181,11 @@ export function FactoryTree({
                                   : 'bg-gray-500'
                               }`}
                             />
-                            <span className="text-sm truncate">{factory.plant_name}</span>
+                            <span className="text-sm truncate min-w-0">{factory.plant_name}</span>
                             {factory.lines_count > 0 && (
                               <span
                                 className={`text-xs ml-auto flex-shrink-0 ${
-                                  isSelected ? 'text-blue-100' : 'text-slate-500'
+                                  isSelected ? 'text-white/70' : 'text-slate-500'
                                 }`}
                               >
                                 {factory.lines_count}ライン
@@ -202,10 +204,10 @@ export function FactoryTree({
       </div>
 
       {/* New Factory Button */}
-      <div className="p-4 border-t border-slate-700">
+      <div className="p-4 border-t border-gray-200 dark:border-slate-700">
         <button
           onClick={onCreateNew}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+          className="w-full px-4 py-2 bg-theme-600 text-white rounded-lg hover:bg-theme-700 transition-colors flex items-center justify-center space-x-2"
         >
           <PlusIcon className="h-5 w-5" />
           <span>新規工場</span>

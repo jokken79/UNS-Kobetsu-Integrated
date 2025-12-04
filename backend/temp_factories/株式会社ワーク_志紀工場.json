@@ -1,0 +1,39 @@
+{
+  "factory_id": "株式会社ワーク_志紀工場",
+  "client_company": {
+    "name": "株式会社ワーク",
+    "address": "大阪府八尾市志紀町",
+    "phone": "",
+    "responsible_person": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    },
+    "complaint_handler": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    }
+  },
+  "plant": {
+    "name": "志紀工場",
+    "address": "大阪府八尾市志紀町",
+    "phone": ""
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {},
+  "payment": {},
+  "agreement": {}
+}

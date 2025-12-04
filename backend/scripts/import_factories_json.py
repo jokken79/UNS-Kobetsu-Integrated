@@ -11,6 +11,8 @@ Usage:
 import argparse
 import sys
 import json
+import logging
+import re
 from pathlib import Path
 from datetime import datetime, date
 from decimal import Decimal
@@ -20,6 +22,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy.exc import IntegrityError
 from app.core.database import SessionLocal
 from app.models.factory import Factory, FactoryLine
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 def parse_date(value) -> date | None:
@@ -32,8 +41,147 @@ def parse_date(value) -> date | None:
         # Format: "2025-09-30 00:00:00" or "2025-09-30"
         dt = datetime.strptime(str(value).split()[0], "%Y-%m-%d")
         return dt.date()
-    except:
+    except ValueError as e:
+        logger.debug(f"Could not parse date value '{value}': {e}")
         return None
+
+
+def calculate_break_minutes(break_time_str: str | None) -> int:
+    """
+    Calculate total break minutes from break time description.
+    Mimics frontend's calculateBreakMinutes function.
+    """
+    if not break_time_str:
+        return 60  # default
+
+    # Try to extract time ranges like "10:30~10:40" or "10:30～10:40"
+    # Also handle Japanese time format "11時00分～11時45分"
+    total_minutes = 0
+
+    # Normalize separators
+    normalized = break_time_str.replace('～', '~').replace('時', ':').replace('分', '')
+
+    # Find patterns like HH:MM~HH:MM
+    pattern = r'(\d{1,2}):(\d{2})[~](\d{1,2}):(\d{2})'
+    matches = re.findall(pattern, normalized)
+
+    for start_h, start_m, end_h, end_m in matches:
+        start = int(start_h) * 60 + int(start_m)
+        end = int(end_h) * 60 + int(end_m)
+        if end < start:
+            end += 24 * 60  # overnight
+        total_minutes += end - start
+
+    # If no matches found, try to parse Japanese descriptive format
+    if total_minutes == 0:
+        # Look for numbers followed by "分" (minutes) like "45分"
+        minute_pattern = r'(\d+)\s*分'
+        minute_matches = re.findall(minute_pattern, break_time_str)
+        for m in minute_matches:
+            total_minutes += int(m)
+
+    # Fallback to default 60 if still zero
+    return total_minutes if total_minutes > 0 else 60
+
+
+def parse_work_hours(work_hours_str: str | None) -> tuple:
+    """
+    Parse work hours string to extract day_shift_start, day_shift_end,
+    night_shift_start, night_shift_end.
+    Returns (day_start, day_end, night_start, night_end) as time objects or None.
+    """
+    if not work_hours_str:
+        return (None, None, None, None)
+    
+    # Example: "昼勤：7時00分～15時30分　夜勤：19時00分～3時30分"
+    # Use regex to extract times
+    import re
+    # Pattern for Japanese time format: 7時00分～15時30分
+    pattern = r'(\d{1,2})時(\d{2})分[～~](\d{1,2})時(\d{2})分'
+    matches = re.findall(pattern, work_hours_str)
+    
+    day_start = day_end = night_start = night_end = None
+    if len(matches) >= 1:
+        h1, m1, h2, m2 = matches[0]
+        day_start = datetime.strptime(f"{h1}:{m1}", "%H:%M").time()
+        day_end = datetime.strptime(f"{h2}:{m2}", "%H:%M").time()
+    if len(matches) >= 2:
+        h1, m1, h2, m2 = matches[1]
+        night_start = datetime.strptime(f"{h1}:{m1}", "%H:%M").time()
+        night_end = datetime.strptime(f"{h2}:{m2}", "%H:%M").time()
+    
+    return (day_start, day_end, night_start, night_end)
+
+
+def parse_overtime_limits(overtime_str: str | None) -> dict:
+    """
+    Parse overtime description to extract limits.
+    Returns dict with keys:
+    - overtime_max_hours_day
+    - overtime_max_hours_month
+    - overtime_max_hours_year
+    - overtime_special_max_month
+    - overtime_special_count_year
+    """
+    if not overtime_str:
+        return {}
+    
+    result = {}
+    # Example: "3時間/日、42時間/月、320時間/年迄とする。但し、特別条項の申請により、80時間/月、720時間/年迄延長できる。申請は6回/年迄とする。"
+    # Extract numbers followed by "時間/日", "時間/月", "時間/年"
+    import re
+    day_match = re.search(r'(\d+(?:\.\d+)?)\s*時間/日', overtime_str)
+    month_match = re.search(r'(\d+(?:\.\d+)?)\s*時間/月', overtime_str)
+    year_match = re.search(r'(\d+(?:\.\d+)?)\s*時間/年', overtime_str)
+    special_month_match = re.search(r'特別条項.*?(\d+(?:\.\d+)?)\s*時間/月', overtime_str)
+    special_year_match = re.search(r'特別条項.*?(\d+(?:\.\d+)?)\s*時間/年', overtime_str)
+    special_count_match = re.search(r'申請は\s*(\d+)\s*回/年', overtime_str)
+    
+    if day_match:
+        result['overtime_max_hours_day'] = Decimal(day_match.group(1))
+    if month_match:
+        result['overtime_max_hours_month'] = Decimal(month_match.group(1))
+    if year_match:
+        result['overtime_max_hours_year'] = int(year_match.group(1))
+    if special_month_match:
+        result['overtime_special_max_month'] = Decimal(special_month_match.group(1))
+    if special_year_match:
+        result['overtime_special_count_year'] = int(special_year_match.group(1))
+    if special_count_match:
+        result['overtime_special_count_year'] = int(special_count_match.group(1))
+    
+    return result
+
+
+def parse_holiday_work_max_days(holiday_str: str | None) -> int | None:
+    """
+    Parse holiday work description to extract max days per month.
+    Returns integer or None.
+    """
+    if not holiday_str:
+        return None
+    # Example: "１ヶ月に２日の範囲内で命ずることができる。"
+    import re
+    match = re.search(r'(\d+)\s*日の範囲', holiday_str)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def extract_position_from_name(full_name: str | None) -> tuple[str | None, str | None]:
+    """
+    Extract position and name from Japanese full name.
+    Example: "主任　山口　アデルソン" -> position="主任", name="山口　アデルソン"
+    """
+    if not full_name:
+        return (None, None)
+    # Split by spaces or Japanese spaces
+    parts = full_name.split()
+    if len(parts) >= 2 and len(parts[0]) <= 4:  # Assume first part is position
+        position = parts[0]
+        name = ' '.join(parts[1:])
+        return (position, name)
+    return (None, full_name)
 
 
 def json_to_factory(data: dict) -> dict:
@@ -45,16 +193,41 @@ def json_to_factory(data: dict) -> dict:
     payment = data.get('payment', {})
     agreement = data.get('agreement', {})
 
-    return {
+    break_time_description = schedule.get('break_time')
+    break_minutes = calculate_break_minutes(break_time_description)
+
+    # Parse work hours for shift times
+    work_hours_str = schedule.get('work_hours')
+    day_shift_start, day_shift_end, night_shift_start, night_shift_end = parse_work_hours(work_hours_str)
+
+    # Parse overtime limits
+    overtime_str = schedule.get('overtime_labor')
+    overtime_limits = parse_overtime_limits(overtime_str)
+
+    # Parse holiday work max days
+    holiday_str = schedule.get('non_work_day_labor')
+    holiday_work_max_days_month = parse_holiday_work_max_days(holiday_str)
+
+    # Extract positions from names
+    client_resp_name = client.get('responsible_person', {}).get('name')
+    client_resp_position, client_resp_name_clean = extract_position_from_name(client_resp_name)
+    client_comp_name = client.get('complaint_handler', {}).get('name')
+    client_comp_position, client_comp_name_clean = extract_position_from_name(client_comp_name)
+
+    # Build factory dict
+    factory_dict = {
         'factory_id': data.get('factory_id'),
         'company_name': client.get('name') or data.get('client_company'),
         'company_address': client.get('address'),
         'company_phone': client.get('phone'),
+        'company_fax': client.get('fax'),  # New field
         'client_responsible_department': client.get('responsible_person', {}).get('department'),
-        'client_responsible_name': client.get('responsible_person', {}).get('name'),
+        'client_responsible_position': client_resp_position,
+        'client_responsible_name': client_resp_name_clean,
         'client_responsible_phone': client.get('responsible_person', {}).get('phone'),
         'client_complaint_department': client.get('complaint_handler', {}).get('department'),
-        'client_complaint_name': client.get('complaint_handler', {}).get('name'),
+        'client_complaint_position': client_comp_position,
+        'client_complaint_name': client_comp_name_clean,
         'client_complaint_phone': client.get('complaint_handler', {}).get('phone'),
         'plant_name': plant.get('name') or data.get('plant_name', ''),
         'plant_address': plant.get('address'),
@@ -65,12 +238,25 @@ def json_to_factory(data: dict) -> dict:
         'dispatch_complaint_department': dispatch.get('complaint_handler', {}).get('department'),
         'dispatch_complaint_name': dispatch.get('complaint_handler', {}).get('name'),
         'dispatch_complaint_phone': dispatch.get('complaint_handler', {}).get('phone'),
-        'work_hours_description': schedule.get('work_hours'),
-        'break_time_description': schedule.get('break_time'),
+        'work_hours_description': work_hours_str,
+        'day_shift_start': day_shift_start,
+        'day_shift_end': day_shift_end,
+        'night_shift_start': night_shift_start,
+        'night_shift_end': night_shift_end,
+        'break_time_description': break_time_description,
         'calendar_description': schedule.get('calendar'),
-        'overtime_description': schedule.get('overtime_labor'),
-        'holiday_work_description': schedule.get('non_work_day_labor'),
+        'overtime_description': overtime_str,
+        'overtime_max_hours_day': overtime_limits.get('overtime_max_hours_day'),
+        'overtime_max_hours_month': overtime_limits.get('overtime_max_hours_month'),
+        'overtime_max_hours_year': overtime_limits.get('overtime_max_hours_year'),
+        'overtime_special_max_month': overtime_limits.get('overtime_special_max_month'),
+        'overtime_special_count_year': overtime_limits.get('overtime_special_count_year'),
+        'holiday_work_description': holiday_str,
+        'holiday_work_max_days_month': holiday_work_max_days_month,
         'conflict_date': parse_date(schedule.get('conflict_date')),
+        'contract_start_date': parse_date(schedule.get('start_date')),
+        'contract_end_date': parse_date(schedule.get('end_date')),
+        'break_minutes': break_minutes,
         'time_unit_minutes': Decimal(schedule.get('time_unit', '15') or '15'),
         'closing_date': payment.get('closing_date'),
         'payment_date': payment.get('payment_date'),
@@ -82,6 +268,7 @@ def json_to_factory(data: dict) -> dict:
         'agreement_explainer': agreement.get('explainer'),
         'is_active': True,
     }
+    return factory_dict
 
 
 def json_to_lines(data: dict, factory_db_id: int) -> list[dict]:
@@ -94,13 +281,18 @@ def json_to_lines(data: dict, factory_db_id: int) -> list[dict]:
         job = line.get('job', {})
         supervisor = assignment.get('supervisor', {})
 
+        # Extract supervisor position from name
+        supervisor_name = supervisor.get('name')
+        supervisor_position, supervisor_name_clean = extract_position_from_name(supervisor_name)
+
         line_dict = {
             'factory_id': factory_db_id,
             'line_id': line.get('line_id'),
             'department': assignment.get('department'),
             'line_name': assignment.get('line'),
             'supervisor_department': supervisor.get('department'),
-            'supervisor_name': supervisor.get('name'),
+            'supervisor_position': supervisor_position,
+            'supervisor_name': supervisor_name_clean,
             'supervisor_phone': supervisor.get('phone'),
             'job_description': job.get('description'),
             'job_description_detail': job.get('description2'),
@@ -211,9 +403,11 @@ def import_factories(json_dir: str, dry_run: bool = False):
 
             except json.JSONDecodeError as e:
                 stats['errors'] += 1
+                logger.error(f"  ERROR {json_file.name}: Invalid JSON - {e}", exc_info=True)
                 print(f"  ERROR {json_file.name}: Invalid JSON - {e}")
             except Exception as e:
                 stats['errors'] += 1
+                logger.error(f"  ERROR {json_file.name}: {e}", exc_info=True)
                 print(f"  ERROR {json_file.name}: {e}")
 
         if not dry_run:
@@ -223,6 +417,7 @@ def import_factories(json_dir: str, dry_run: bool = False):
             print("\nDRY RUN - No changes made.")
 
     except Exception as e:
+        logger.critical(f"FATAL ERROR: {e}", exc_info=True)
         print(f"\nFATAL ERROR: {e}")
         db.rollback()
         return False

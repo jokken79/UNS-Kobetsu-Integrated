@@ -158,6 +158,42 @@ async def get_contracts_by_employee(
 
 
 # ========================================
+# DELETE ALL ENDPOINT (Must be before /{contract_id})
+# ========================================
+
+@router.delete("/delete-all", status_code=status.HTTP_200_OK)
+async def delete_all_contracts(
+    db: Session = Depends(get_db),
+    # current_user: dict = Depends(get_current_user)  # TODO: Re-enable in production
+):
+    """Delete ALL kobetsu keiyakusho contracts from database. WARNING: This is a destructive operation!"""
+    try:
+        from app.models.kobetsu_keiyakusho import KobetsuKeiyakusho, kobetsu_employees
+
+        # Count before deletion
+        contract_count = db.query(KobetsuKeiyakusho).count()
+
+        # Delete association table first
+        db.execute(kobetsu_employees.delete())
+
+        # Delete all contracts
+        db.query(KobetsuKeiyakusho).delete()
+
+        db.commit()
+
+        return {
+            "message": f"Successfully deleted all kobetsu contracts",
+            "deleted_count": contract_count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete contracts: {str(e)}"
+        )
+
+
+# ========================================
 # CRUD ENDPOINTS
 # ========================================
 

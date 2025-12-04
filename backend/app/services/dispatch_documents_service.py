@@ -1181,3 +1181,365 @@ class DispatchDocumentService:
         doc.save(buffer)
         buffer.seek(0)
         return buffer.getvalue()
+
+    # ========================================
+    # 7. 人材派遣個別契約書 - EXACT CLONE FROM PDF
+    # ========================================
+
+    def generate_jinzai_haken_kobetsu_keiyakusho(self, data: Dict[str, Any]) -> bytes:
+        """
+        Generate 人材派遣個別契約書 - EXACT format clone from reference PDF.
+        This is a 1-page A4 document with dense table format.
+        """
+        doc = Document()
+        section = doc.sections[0]
+        section.page_width = Mm(210)
+        section.page_height = Mm(297)
+        # Márgenes mínimos para usar todo el A4
+        section.top_margin = Mm(5)
+        section.bottom_margin = Mm(3)
+        section.left_margin = Mm(5)
+        section.right_margin = Mm(5)
+
+        # Title - igual que el PDF
+        p = doc.add_paragraph()
+        run = p.add_run("人材派遣個別契約書")
+        run.font.name = "MS Gothic"
+        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'MS Gothic')
+        run.font.size = Pt(16)
+        run.bold = True
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(6)
+
+        # Opening paragraph
+        client_name = data.get('client_company_name', '')
+        p = doc.add_paragraph()
+        opening_text = f"{client_name}（以下、「甲」という。）と{settings.COMPANY_NAME}（以下、「乙」という。）間で締結された労働者派遣基本契約書の定めに従い、次の派遣要件に基づき労働者派遣契約を締結する。"
+        run = p.add_run(opening_text)
+        run.font.name = "MS Gothic"
+        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'MS Gothic')
+        run.font.size = Pt(8)
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(4)
+
+        # Main table - 9 columns, ancho total = 200mm (210 - 5 - 5)
+        table = doc.add_table(rows=28, cols=9)
+        table.style = 'Table Grid'
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.autofit = False
+
+        # Set column widths (total = 200mm para llenar todo el ancho)
+        col_widths = [Mm(13), Mm(24), Mm(13), Mm(38), Mm(13), Mm(38), Mm(13), Mm(24), Mm(24)]
+        for row in table.rows:
+            for i, width in enumerate(col_widths):
+                row.cells[i].width = width
+
+        r = 0  # row counter
+
+        # ========== 派遣先 SECTION (Rows 0-5) ==========
+        # Row 0: 派遣先事業所
+        self._set_cell_font(table.rows[r].cells[1], "派遣先事業所", 8, True)
+        self._set_cell_font(table.rows[r].cells[2], "名称", 7)
+        self._set_cell_font(table.rows[r].cells[3], client_name, 8)
+        self._set_cell_font(table.rows[r].cells[4], "所在地", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('client_address', ''), 7)
+        self._set_cell_font(table.rows[r].cells[6], "TEL", 7)
+        table.rows[r].cells[7].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[7], data.get('client_tel', ''), 8)
+
+        r += 1
+        # Row 1: 就業場所
+        self._set_cell_font(table.rows[r].cells[1], "就業場所", 8, True)
+        self._set_cell_font(table.rows[r].cells[2], "名称", 7)
+        self._set_cell_font(table.rows[r].cells[3], data.get('worksite_name', ''), 8)
+        self._set_cell_font(table.rows[r].cells[4], "所在地", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('worksite_address', ''), 7)
+        self._set_cell_font(table.rows[r].cells[6], "TEL", 7)
+        table.rows[r].cells[7].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[7], data.get('worksite_tel', ''), 8)
+
+        r += 1
+        # Row 2: 組織単位
+        self._set_cell_font(table.rows[r].cells[1], "組織単位", 8, True)
+        table.rows[r].cells[2].merge(table.rows[r].cells[4])
+        self._set_cell_font(table.rows[r].cells[2], data.get('organizational_unit', ''), 8)
+        self._set_cell_font(table.rows[r].cells[5], "抵触日", 7, True)
+        conflict_date = data.get('conflict_date')
+        table.rows[r].cells[6].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[6], self._format_date_japanese(conflict_date) if conflict_date else '', 8)
+
+        r += 1
+        # Row 3: 指揮命令者
+        self._set_cell_font(table.rows[r].cells[1], "指揮命令者", 8, True)
+        self._set_cell_font(table.rows[r].cells[2], "部署", 7)
+        self._set_cell_font(table.rows[r].cells[3], data.get('supervisor_dept', ''), 8)
+        self._set_cell_font(table.rows[r].cells[4], "役職", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('supervisor_position', ''), 8)
+        self._set_cell_font(table.rows[r].cells[6], data.get('supervisor_name', ''), 8)
+        self._set_cell_font(table.rows[r].cells[7], "TEL", 7)
+        self._set_cell_font(table.rows[r].cells[8], data.get('supervisor_tel', ''), 7)
+
+        r += 1
+        # Row 4: 製造業務専門派遣先責任者
+        self._set_cell_font(table.rows[r].cells[1], "製造業務専門派遣先責任者", 7, True)
+        self._set_cell_font(table.rows[r].cells[2], "部署", 7)
+        self._set_cell_font(table.rows[r].cells[3], data.get('saki_manager_dept', ''), 8)
+        self._set_cell_font(table.rows[r].cells[4], "役職", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('saki_manager_position', ''), 8)
+        self._set_cell_font(table.rows[r].cells[6], data.get('saki_manager_name', ''), 8)
+        self._set_cell_font(table.rows[r].cells[7], "TEL", 7)
+        self._set_cell_font(table.rows[r].cells[8], data.get('saki_manager_tel', ''), 7)
+
+        r += 1
+        # Row 5: 苦情処理担当者 (派遣先)
+        self._set_cell_font(table.rows[r].cells[1], "苦情処理担当者", 8, True)
+        self._set_cell_font(table.rows[r].cells[2], "部署", 7)
+        self._set_cell_font(table.rows[r].cells[3], data.get('saki_complaint_dept', ''), 8)
+        self._set_cell_font(table.rows[r].cells[4], "役職", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('saki_complaint_position', ''), 8)
+        self._set_cell_font(table.rows[r].cells[6], data.get('saki_complaint_name', ''), 8)
+        self._set_cell_font(table.rows[r].cells[7], "TEL", 7)
+        self._set_cell_font(table.rows[r].cells[8], data.get('saki_complaint_tel', ''), 7)
+
+        # Merge 派遣先 vertical cells (rows 0-5, col 0)
+        table.rows[0].cells[0].merge(table.rows[5].cells[0])
+        self._set_cell_font(table.rows[0].cells[0], "派\n遣\n先", 10, True)
+        table.rows[0].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        table.rows[0].cells[0].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+        r += 1
+        # ========== 派遣元 SECTION (Rows 6-7) ==========
+        # Row 6: 製造業務専門派遣元責任者
+        self._set_cell_font(table.rows[r].cells[1], "製造業務専門派遣元責任者", 7, True)
+        self._set_cell_font(table.rows[r].cells[2], "部署", 7)
+        self._set_cell_font(table.rows[r].cells[3], data.get('moto_manager_dept', settings.DISPATCH_RESPONSIBLE_DEPARTMENT), 8)
+        self._set_cell_font(table.rows[r].cells[4], "役職", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('moto_manager_position', settings.DISPATCH_RESPONSIBLE_POSITION), 8)
+        self._set_cell_font(table.rows[r].cells[6], data.get('moto_manager_name', settings.DISPATCH_RESPONSIBLE_NAME), 8)
+        self._set_cell_font(table.rows[r].cells[7], "TEL", 7)
+        self._set_cell_font(table.rows[r].cells[8], data.get('moto_manager_tel', settings.DISPATCH_RESPONSIBLE_PHONE), 7)
+
+        r += 1
+        # Row 7: 苦情処理担当者 (派遣元)
+        self._set_cell_font(table.rows[r].cells[1], "苦情処理担当者", 8, True)
+        self._set_cell_font(table.rows[r].cells[2], "部署", 7)
+        self._set_cell_font(table.rows[r].cells[3], data.get('moto_complaint_dept', settings.DISPATCH_COMPLAINT_DEPARTMENT), 8)
+        self._set_cell_font(table.rows[r].cells[4], "役職", 7)
+        self._set_cell_font(table.rows[r].cells[5], data.get('moto_complaint_position', settings.DISPATCH_COMPLAINT_POSITION), 8)
+        self._set_cell_font(table.rows[r].cells[6], data.get('moto_complaint_name', settings.DISPATCH_COMPLAINT_NAME), 8)
+        self._set_cell_font(table.rows[r].cells[7], "TEL", 7)
+        self._set_cell_font(table.rows[r].cells[8], data.get('moto_complaint_tel', settings.DISPATCH_COMPLAINT_PHONE), 7)
+
+        # Merge 派遣元 vertical cells (rows 6-7, col 0)
+        table.rows[6].cells[0].merge(table.rows[7].cells[0])
+        self._set_cell_font(table.rows[6].cells[0], "派\n遣\n元", 10, True)
+        table.rows[6].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        table.rows[6].cells[0].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+        r += 1
+        # ========== 派遣内容 SECTION (Rows 8-27) ==========
+        # Row 8: 派遣労働者を協定対象労働者に限定するか否か
+        self._set_cell_font(table.rows[r].cells[1], "派遣労働者を協定対象労働者\nに限定するか否か", 7, True)
+        is_kyotei = data.get('is_kyotei_gentei', True)
+        checkbox1 = "☑" if is_kyotei else "☐"
+        checkbox2 = "☐" if is_kyotei else "☑"
+        table.rows[r].cells[2].merge(table.rows[r].cells[5])
+        self._set_cell_font(table.rows[r].cells[2], f"{checkbox1} 協定対象派遣労働者に限定", 8)
+        table.rows[r].cells[6].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[6], f"{checkbox2} 限定なし", 8)
+
+        r += 1
+        # Row 9: 派遣労働者の責任の程度
+        self._set_cell_font(table.rows[r].cells[1], "派遣労働者の責任の程度", 7, True)
+        is_kengen_nashi = data.get('is_kengen_nashi', True)
+        cb1 = "☑" if is_kengen_nashi else "☐"
+        cb2 = "☐" if is_kengen_nashi else "☑"
+        table.rows[r].cells[2].merge(table.rows[r].cells[5])
+        self._set_cell_font(table.rows[r].cells[2], f"{cb1} 付与される権限なし", 8)
+        table.rows[r].cells[6].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[6], f"{cb2} 付与される権限あり", 8)
+
+        r += 1
+        # Row 10: 業務内容
+        self._set_cell_font(table.rows[r].cells[1], "業務内容", 8, True)
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], data.get('work_content', '機械オペレーター及び機械メンテナンス他付随する業務'), 8)
+
+        r += 1
+        # Row 11: 派遣期間
+        self._set_cell_font(table.rows[r].cells[1], "派遣期間", 8, True)
+        start_date = data.get('dispatch_start_date')
+        end_date = data.get('dispatch_end_date')
+        period_text = f"{self._format_date_japanese(start_date)}　～　{self._format_date_japanese(end_date)}" if start_date and end_date else ''
+        table.rows[r].cells[2].merge(table.rows[r].cells[6])
+        self._set_cell_font(table.rows[r].cells[2], period_text, 8)
+        self._set_cell_font(table.rows[r].cells[7], "人　数", 7, True)
+        self._set_cell_font(table.rows[r].cells[8], str(data.get('number_of_workers', 1)), 9)
+
+        r += 1
+        # Row 12: 就業日
+        self._set_cell_font(table.rows[r].cells[1], "就業日", 8, True)
+        work_days_text = data.get('work_days_text', '月～金（祝日、年末年始、夏季休業を除く。）4勤2休シフト　別紙カレンダーの通り')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], work_days_text, 7)
+
+        r += 1
+        # Row 13: 就業時間
+        self._set_cell_font(table.rows[r].cells[1], "就業時間", 8, True)
+        work_time = data.get('work_time_text', '昼勤：8時00分～17時00分　・　夜勤：20時00分～5時00分（実働　7時間40分）')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], work_time, 7)
+
+        r += 1
+        # Row 14: 休憩時間
+        self._set_cell_font(table.rows[r].cells[1], "休憩時間", 8, True)
+        break_time = data.get('break_time_text', '昼勤：10時00～10時15分・12時00分～12時50分・15時00分～15時15分　夜勤：22時00～22時15・00時00分～00時50分・03時00分～03時15分')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], break_time, 6)
+
+        r += 1
+        # Row 15: 就業日外労働
+        self._set_cell_font(table.rows[r].cells[1], "就業日外労働", 8, True)
+        holiday_work = data.get('holiday_work_limit', '1ヶ月に2日の範囲内で命ずることができる。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], holiday_work, 7)
+
+        r += 1
+        # Row 16: 時間外労働
+        self._set_cell_font(table.rows[r].cells[1], "時間外労働", 8, True)
+        overtime = data.get('overtime_limit', '5時間/日、45時間/月、360時間/年迄とする。但し、特別条項の申請により、6時間/日、80時間/月、720時間/年迄延長できる。申請は6回/年迄とする。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], overtime, 6)
+
+        r += 1
+        # Row 17: 派遣料金 line 1
+        self._set_cell_font(table.rows[r].cells[1], "派遣料金", 8, True)
+        rate_basic = data.get('rate_basic', 1700)
+        rate_ot = data.get('rate_overtime', 2125)
+        rate_night = data.get('rate_night', 2125)
+        rate_text = f"基本 ¥{rate_basic:,}　　　残業(1.25%) ¥{rate_ot:,}　　　深夜(1.25%) ¥{rate_night:,}"
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], rate_text, 8)
+
+        r += 1
+        # Row 18: 派遣料金 line 2
+        self._set_cell_font(table.rows[r].cells[1], "", 8)
+        rate_holiday = data.get('rate_holiday', 2295)
+        rate_over60 = data.get('rate_over60', 2550)
+        rate_text2 = f"休日(1.35%) ¥{rate_holiday:,}　　　<60時間超>　割増料金(1.5%) ¥{rate_over60:,}"
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], rate_text2, 8)
+
+        r += 1
+        # Row 19: 計算単位
+        self._set_cell_font(table.rows[r].cells[1], "", 8)
+        calc_unit = data.get('calculation_unit', '5分単位')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], f"労働時間の計算は　{calc_unit}で計算する。", 8)
+
+        r += 1
+        # Row 20: 支払い条件
+        self._set_cell_font(table.rows[r].cells[1], "支払い条件", 8, True)
+        closing = data.get('payment_closing', '20日')
+        pay_date = data.get('payment_date', '翌月20日')
+        pay_method = data.get('payment_method', '銀行振込')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], f"締日　{closing}　　　支払日　{pay_date}　　　支払方法　{pay_method}", 8)
+
+        r += 1
+        # Row 21: 振込先
+        self._set_cell_font(table.rows[r].cells[1], "", 8)
+        bank_info = data.get('bank_info', '振込先　愛知銀行　お知支店　普通2075479　名義人　ユニバーサル企画（株）')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], bank_info, 8)
+
+        r += 1
+        # Row 22: 安全・衛生
+        self._set_cell_font(table.rows[r].cells[1], "安全・衛生", 8, True)
+        safety_text = data.get('safety_text', '派遣先及び派遣元事業主は、労働者派遣法第44条から第47条の2までの規定により課された各法令を遵守し、自己に課された法令上の責任を負う。なお、派遣就業中の安全及び衛生については、派遣先の安全衛生に関する規定を順守することとし、その他については、派遣元の安全衛生に関する規定を適用する。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], safety_text, 6)
+
+        r += 1
+        # Row 23: 便宜供与
+        self._set_cell_font(table.rows[r].cells[1], "便宜供与", 8, True)
+        convenience_text = data.get('convenience_text', '派遣先は、派遣労働者に対して利用の機会を与える給食施設、休憩室、及び更衣室については、本契約に基づく派遣労働者に係る派遣労働者に対しても、利用の機会を与えるよう配慮しなければならないこととする。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], convenience_text, 6)
+
+        r += 1
+        # Row 24: 苦情処理方法
+        self._set_cell_font(table.rows[r].cells[1], "苦情処理方法", 8, True)
+        complaint_text = data.get('complaint_text', '(1)派遣元事業主における苦情処理担当者が苦情の申し出を受けたときは、ただちに製造業務専門派遣元責任者へ連絡することとし、当該派遣元責任者が中心となって、誠意をもって、遅滞なく、当該苦情の適切かつ迅速な処理を図ることとし、その結果について必ず派遣労働者に通知することとする。\n(2)派遣先における苦情処理担当者が苦情の申し出を受けたときは、ただちに製造業務専門派遣先責任者へ連絡することとし、当該派遣先責任者が中心となって、誠意をもって、遅滞なく、当該苦情の適切かつ迅速な処理を図ることとし、その結果については必ず派遣労働者に通知することとする。\n(3)派遣先及び派遣元事業主は、自らでその解決が容易であり、即日に処理した苦情の他は、相互に遅滞なく通知するとともに、密接に連絡調整を行いつつ、その解決を図ることとする。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], complaint_text, 5)
+
+        r += 1
+        # Row 25: 労働者派遣契約の解除
+        self._set_cell_font(table.rows[r].cells[1], "労働者派遣契約の解除に当たって講ずる派遣労働者の雇用の安定を図るための措置", 6, True)
+        termination_text = data.get('termination_text', '(1)労働者派遣契約の解除の事前申し入れ　派遣先は、専ら派遣先に起因する事由により、労働者派遣契約の契約期間が満了する前の解除を行おうとする場合には、派遣元の合意を得ることはもとより、あらかじめ相当の猶予期間をもって派遣元に解除の申し入れを行うこととする。\n(2)就業機会の確保派遣元事業主及び派遣先は、労働者派遣契約の契約期間が満了する前に派遣労働者の責に帰すべき事由によらない労働者派遣契約の解除を行った場合には、派遣先の関連会社での就業をあっせんする等により、当該労働者派遣契約に係る派遣労働者の新たな就業機会の確保を図ることとする。\n(3)損害賠償等に係る適切な措置派遣先は、派遣先の責に帰すべき事由により労働者派遣契約の契約期間が満了する前に労働者派遣契約の解除を行おうとする場合には、派遣労働者の新たな就業機会の確保を図ることとし、これができないときは、少なくとも当該労働者派遣契約の解除に伴い派遣元が当該労働者派遣契約に係る派遣労働者を休業させること等を余儀なくされたことにより生じた損害の賠償を行わなければならないこととする。また、派遣元事業主及び派遣先の双方の責に帰すべき事由がある場合には、それぞれの責に帰すことに十分に考慮することとする。\n(4)労働者派遣契約の解除の理由の明示　派遣先は、労働者派遣契約の契約期間が満了する前に労働者派遣契約の解除を行おうとする場合であって派遣元事業主から請求があったときは、労働者派遣契約の解除を行った理由を派遣元事業主に対して明らかにすることとする。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], termination_text, 5)
+
+        r += 1
+        # Row 26: 派遣先が派遣労働者を雇用する場合の紛争防止措置
+        self._set_cell_font(table.rows[r].cells[1], "派遣先が派遣労働者を雇用する場合の紛争防止措置", 6, True)
+        prevention_text = data.get('prevention_text', '派遣先が派遣終了後に、当該派遣労働者を雇用する場合、その雇用意思を事前に派遣元へ示すこととする。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], prevention_text, 7)
+
+        r += 1
+        # Row 27: 派遣労働者を無期雇用派遣労働者又は60歳以上の者に限定するか否かの別
+        self._set_cell_font(table.rows[r].cells[1], "派遣労働者を無期雇用派遣労働者又は60歳以上の者に限定するか否かの別", 6, True)
+        limit_text = data.get('limit_text', '無期雇用又は60歳以上に限定しない。')
+        table.rows[r].cells[2].merge(table.rows[r].cells[8])
+        self._set_cell_font(table.rows[r].cells[2], limit_text, 7)
+
+        # Merge 派遣内容 vertical cells (rows 8-27, col 0)
+        table.rows[8].cells[0].merge(table.rows[27].cells[0])
+        self._set_cell_font(table.rows[8].cells[0], "派\n\n遣\n\n内\n\n容", 10, True)
+        table.rows[8].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        table.rows[8].cells[0].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+        # ========== SIGNATURE SECTION ==========
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(6)
+        run = p.add_run("上記契約の証として本書2通を作成し、甲乙記名押印のうえ、各1通を保有する。")
+        run.font.name = "MS Gothic"
+        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'MS Gothic')
+        run.font.size = Pt(9)
+
+        # Contract date
+        contract_date = data.get('contract_date', date.today())
+        p = doc.add_paragraph()
+        run = p.add_run(self._format_date_japanese(contract_date))
+        run.font.name = "MS Gothic"
+        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'MS Gothic')
+        run.font.size = Pt(10)
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(2)
+
+        # Signature table - 2 columns: 甲 (left) and 乙 (right)
+        sig_table = doc.add_table(rows=1, cols=2)
+        sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        sig_table.autofit = False
+        sig_table.rows[0].cells[0].width = Mm(100)
+        sig_table.rows[0].cells[1].width = Mm(100)
+
+        # 甲 (Client) - left empty for signature
+        self._set_cell_font(sig_table.rows[0].cells[0], "（甲）", 10)
+
+        # 乙 (UNS Kikaku)
+        uns_info = f"""（乙）
+愛知県名古屋市東区徳川2-18-18
+{settings.COMPANY_NAME}
+{settings.DISPATCH_MANAGER_POSITION}　{settings.DISPATCH_MANAGER_NAME}
+許可番号　{settings.COMPANY_LICENSE_NUMBER}"""
+        self._set_cell_font(sig_table.rows[0].cells[1], uns_info, 9)
+        sig_table.rows[0].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        return buffer.getvalue()

@@ -1,0 +1,55 @@
+{
+  "factory_id": "コーリツ株式会社_州の崎工場",
+  "client_company": {
+    "name": "コーリツ株式会社",
+    "address": "愛知県刈谷市小垣江町本郷下33番地3",
+    "phone": "0566-21-5139",
+    "responsible_person": {
+      "department": "総務部",
+      "name": "",
+      "phone": "0569-20-0332"
+    },
+    "complaint_handler": {
+      "department": "総務部",
+      "name": "",
+      "phone": "0569-20-0332"
+    }
+  },
+  "plant": {
+    "name": "州の崎工場",
+    "address": "愛知県半田市州の崎町2-171",
+    "phone": "0569-20-0332"
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {
+    "work_hours": "",
+    "break_time": "",
+    "calendar": "",
+    "start_date": "",
+    "end_date": "",
+    "conflict_date": "",
+    "overtime_labor": "",
+    "time_unit": "15.0"
+  },
+  "payment": {
+    "closing_date": "",
+    "payment_date": "",
+    "bank_account": ""
+  },
+  "agreement": {
+    "period": "",
+    "explainer": ""
+  }
+}

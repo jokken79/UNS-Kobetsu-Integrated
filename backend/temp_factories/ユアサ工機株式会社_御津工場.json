@@ -1,0 +1,55 @@
+{
+  "factory_id": "ユアサ工機株式会社_御津工場",
+  "client_company": {
+    "name": "ユアサ工機株式会社",
+    "address": "岡山県岡山市北区厚生町2丁目14-21",
+    "phone": "086-222-3211",
+    "responsible_person": {
+      "department": "総務部",
+      "name": "",
+      "phone": "086-222-3211"
+    },
+    "complaint_handler": {
+      "department": "総務部",
+      "name": "",
+      "phone": "086-222-3211"
+    }
+  },
+  "plant": {
+    "name": "御津工場",
+    "address": "岡山県岡山市北区御津矢原七端450-2",
+    "phone": "086-724-9337"
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {
+    "work_hours": "",
+    "break_time": "",
+    "calendar": "",
+    "start_date": "",
+    "end_date": "",
+    "conflict_date": "",
+    "overtime_labor": "",
+    "time_unit": "15.0"
+  },
+  "payment": {
+    "closing_date": "",
+    "payment_date": "",
+    "bank_account": ""
+  },
+  "agreement": {
+    "period": "",
+    "explainer": ""
+  }
+}

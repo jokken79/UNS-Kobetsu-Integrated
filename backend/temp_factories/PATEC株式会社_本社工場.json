@@ -1,0 +1,39 @@
+{
+  "factory_id": "PATEC株式会社_本社工場",
+  "client_company": {
+    "name": "PATEC株式会社",
+    "address": "山口県防府市大字浜方534番地20",
+    "phone": "0835-25-2550",
+    "responsible_person": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    },
+    "complaint_handler": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    }
+  },
+  "plant": {
+    "name": "本社工場",
+    "address": "山口県防府市大字浜方534番地20",
+    "phone": "0835-26-0020"
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {},
+  "payment": {},
+  "agreement": {}
+}

@@ -1,23 +1,22 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
-import { factoryApi, employeeApi } from '@/lib/api'
-import { FactoryTree } from '@/components/factory/FactoryTree'
-import { LineCard } from '@/components/factory/LineCard'
 import { Breadcrumbs } from '@/components/common/Breadcrumbs'
+import { useConfirmActions } from '@/components/common/ConfirmContext'
 import { SkeletonCard } from '@/components/common/Skeleton'
 import { useToastActions } from '@/components/common/ToastContext'
-import { useConfirmActions } from '@/components/common/ConfirmContext'
-import { useUpdateFactory, useDeleteFactory } from '@/hooks/useFactories'
+import { FactoryTree } from '@/components/factory/FactoryTree'
+import { LineCard } from '@/components/factory/LineCard'
+import { useDeleteFactory, useUpdateFactory } from '@/hooks/useFactories'
+import { employeeApi, factoryApi } from '@/lib/api'
+import { formatBreakTimeForDisplay } from '@/lib/formatBreakTime'
 import type {
-  FactoryListItem,
-  FactoryResponse,
-  FactoryUpdate,
   EmployeeResponse,
-  FactoryLineResponse
+  FactoryLineResponse,
+  FactoryUpdate
 } from '@/types'
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
 
 export default function FactoriesPage() {
   const router = useRouter()
@@ -194,6 +193,28 @@ export default function FactoriesPage() {
       newExpanded.add(lineId)
     }
     setExpandedLines(newExpanded)
+  }
+
+  // Helper to format break time for display
+  const getBreakTimeSummary = (breakTimeDescription?: string, breakMinutes?: number) => {
+    if (!breakTimeDescription || breakTimeDescription.trim() === '') {
+      return `${breakMinutes || 0}分`
+    }
+    const lines = formatBreakTimeForDisplay(breakTimeDescription)
+    if (lines.length === 0) {
+      return `${breakMinutes || 0}分`
+    }
+    // Take first line (shift) and first period as summary
+    const firstLine = lines[0]
+    if (firstLine.startsWith('【')) {
+      // If we have shift, maybe show shift + first period
+      const secondLine = lines[1] || ''
+      const summary = secondLine ? `${firstLine} ${secondLine.trim()}` : firstLine
+      return `${summary} (${breakMinutes || 0}分)`
+    } else {
+      // No shift, just show first line
+      return `${firstLine} (${breakMinutes || 0}分)`
+    }
   }
 
   // Empty state component
@@ -467,7 +488,115 @@ export default function FactoriesPage() {
                 </div>
               </div>
 
-              {/* Other Information */}
+              {/* Additional Information Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Contract & Schedule Card */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">📅</span>
+                    <h3 className="font-semibold">契約・スケジュール情報</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-sm text-gray-600">契約開始日</label>
+                      <p className="font-medium">
+                        {factoryDetail.contract_start_date ?
+                          new Date(factoryDetail.contract_start_date).toLocaleDateString('ja-JP') : '未設定'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">契約終了日</label>
+                      <p className="font-medium">
+                        {factoryDetail.contract_end_date ?
+                          new Date(factoryDetail.contract_end_date).toLocaleDateString('ja-JP') : '未設定'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">就業時間</label>
+                      <p className="font-medium">{factoryDetail.work_hours_description || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">昼勤開始</label>
+                      <p className="font-medium">{factoryDetail.day_shift_start || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">昼勤終了</label>
+                      <p className="font-medium">{factoryDetail.day_shift_end || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">夜勤開始</label>
+                      <p className="font-medium">{factoryDetail.night_shift_start || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">夜勤終了</label>
+                      <p className="font-medium">{factoryDetail.night_shift_end || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">時間外労働上限 (日)</label>
+                      <p className="font-medium">{factoryDetail.overtime_max_hours_day ? `${factoryDetail.overtime_max_hours_day}時間` : '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">時間外労働上限 (月)</label>
+                      <p className="font-medium">{factoryDetail.overtime_max_hours_month ? `${factoryDetail.overtime_max_hours_month}時間` : '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">休日労働上限 (月)</label>
+                      <p className="font-medium">{factoryDetail.holiday_work_max_days_month ? `${factoryDetail.holiday_work_max_days_month}日` : '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment & Agreement Card */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">💰</span>
+                    <h3 className="font-semibold">支払・協定情報</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-sm text-gray-600">締め日</label>
+                      <p className="font-medium">{factoryDetail.closing_date || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">支払日</label>
+                      <p className="font-medium">{factoryDetail.payment_date || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">労働者締め日</label>
+                      <p className="font-medium">{factoryDetail.worker_closing_date || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">労働者支払日</label>
+                      <p className="font-medium">{factoryDetail.worker_payment_date || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">労働者カレンダー</label>
+                      <p className="font-medium">{factoryDetail.worker_calendar || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">協定期間</label>
+                      <p className="font-medium">
+                        {factoryDetail.agreement_period ?
+                          new Date(factoryDetail.agreement_period).toLocaleDateString('ja-JP') : '未設定'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">説明者</label>
+                      <p className="font-medium">{factoryDetail.agreement_explainer || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">時間単位 (分)</label>
+                      <p className="font-medium">{factoryDetail.time_unit_minutes || '15'}分</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">銀行口座</label>
+                      <p className="font-medium">{factoryDetail.bank_account || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conflict Date & Break Minutes (inline) */}
               <div className="flex flex-wrap gap-6 mb-6">
                 <div>
                   <span className="text-sm text-gray-600">📅 抵触日:</span>
@@ -498,7 +627,9 @@ export default function FactoriesPage() {
                       min="0"
                     />
                   ) : (
-                    <span className="font-medium ml-2">{factoryDetail.break_minutes || 0}分</span>
+                    <span className="font-medium ml-2">
+                      {getBreakTimeSummary(factoryDetail.break_time_description, factoryDetail.break_minutes)}
+                    </span>
                   )}
                 </div>
               </div>

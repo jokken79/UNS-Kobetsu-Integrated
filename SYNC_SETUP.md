@@ -117,7 +117,8 @@ Después de configurar cualquier opción:
 - ❌ Ruta de red UNC no accesible desde Docker
 - ✅ Backend funcionando correctamente
 - ✅ Frontend funcionando correctamente
-- ⏳ Esperando configuración de acceso a archivos
+- ✅ Datos locales importados (fábricas y empleados)
+- ⏳ Sincronización con Base Madre deshabilitada temporalmente (se usan datos locales)
 
 ## ¿Cuál opción usar?
 

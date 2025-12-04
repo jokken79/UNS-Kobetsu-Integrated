@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import Link from 'next/link'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 // SVG Icons
 const Icons = {
@@ -69,27 +70,27 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/60">
-      <div className="px-4 lg:px-6 py-3">
+    <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-gray-200/40 dark:border-slate-700/40 shadow-sm">
+      <div className="px-4 lg:px-6 py-3.5">
         <div className="flex justify-between items-center gap-4">
           {/* Search */}
           <div className="flex-1 max-w-xl hidden md:block">
             <div className={`relative transition-all duration-200 ${searchFocused ? 'scale-[1.02]' : ''}`}>
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-slate-400">
                 <Icons.Search />
               </div>
               <input
                 type="search"
                 placeholder="契約書を検索... (契約番号、派遣先など)"
-                className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
-                          text-sm placeholder:text-gray-400
-                          focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
-                          transition-all duration-200`}
+                className={`w-full pl-10 pr-20 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl
+                          text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400 font-medium
+                          focus:bg-white dark:focus:bg-slate-700 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10
+                          transition-all duration-200 hover:border-gray-300 dark:hover:border-slate-600`}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
               />
               <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <kbd className="hidden sm:inline-flex px-2 py-0.5 text-xs font-medium text-gray-400 bg-gray-100 rounded">
+                <kbd className="hidden sm:inline-flex px-2 py-0.5 text-xs font-medium text-gray-400 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded">
                   ⌘K
                 </kbd>
               </div>
@@ -98,9 +99,12 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            {/* Theme Switcher */}
+            <ThemeSwitcher />
+
             {/* Help */}
             <button
-              className="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+              className="p-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
               title="ヘルプ"
             >
               <Icons.Help />
@@ -108,42 +112,45 @@ export function Header() {
 
             {/* Notifications */}
             <button
-              className="relative p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+              className="relative p-2.5 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
               title="通知"
             >
               <Icons.Bell />
               <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full
-                             border-2 border-white animate-pulse" />
+                             border-2 border-white dark:border-slate-900 animate-pulse" />
             </button>
 
             {/* Divider */}
-            <div className="w-px h-8 bg-gray-200 mx-2 hidden sm:block" />
+            <div className="w-px h-8 bg-gray-200 dark:bg-slate-700 mx-2 hidden sm:block" />
 
             {/* User Menu */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
                 className={`flex items-center gap-3 p-1.5 pr-3 rounded-xl transition-all duration-200
-                          ${showDropdown ? 'bg-gray-100' : 'hover:bg-gray-100'}`}
+                          ${showDropdown ? 'bg-gray-100 dark:bg-slate-800' : 'hover:bg-gray-100 dark:hover:bg-slate-800'}`}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600
-                              flex items-center justify-center text-white font-semibold text-sm
-                              shadow-md shadow-blue-500/30">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-violet-600
+                              flex items-center justify-center text-white font-bold text-sm
+                              shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/40
+                              transition-all duration-300">
                   {user?.full_name?.[0] || 'U'}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent
+                              opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* Name - hidden on mobile */}
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900 leading-tight">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
                     {user?.full_name || 'ユーザー'}
                   </p>
-                  <p className="text-xs text-gray-500 leading-tight">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 leading-tight">
                     管理者
                   </p>
                 </div>
 
-                <span className={`text-gray-400 transition-transform duration-200 hidden sm:block
+                <span className={`text-gray-400 dark:text-slate-400 transition-transform duration-200 hidden sm:block
                                 ${showDropdown ? 'rotate-180' : ''}`}>
                   <Icons.ChevronDown />
                 </span>
@@ -151,13 +158,13 @@ export function Header() {
 
               {/* Dropdown Menu */}
               {showDropdown && (
-                <div className="dropdown right-0 mt-2 w-56 animate-slide-down">
+                <div className="dropdown right-0 mt-2 w-56 animate-slide-down bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg">
                   {/* User Info */}
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {user?.full_name || 'ユーザー'}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                       {user?.email || 'user@example.com'}
                     </p>
                   </div>
@@ -166,7 +173,7 @@ export function Header() {
                   <div className="py-1.5">
                     <Link
                       href="/profile"
-                      className="dropdown-item"
+                      className="dropdown-item text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                       onClick={() => setShowDropdown(false)}
                     >
                       <Icons.User />
@@ -174,7 +181,7 @@ export function Header() {
                     </Link>
                     <Link
                       href="/settings"
-                      className="dropdown-item"
+                      className="dropdown-item text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                       onClick={() => setShowDropdown(false)}
                     >
                       <Icons.Settings />
@@ -182,7 +189,7 @@ export function Header() {
                     </Link>
                   </div>
 
-                  <div className="dropdown-divider" />
+                  <div className="dropdown-divider dark:bg-slate-700" />
 
                   {/* Logout */}
                   <div className="py-1.5">
@@ -191,7 +198,7 @@ export function Header() {
                         logout()
                         setShowDropdown(false)
                       }}
-                      className="dropdown-item w-full text-red-600 hover:bg-red-50"
+                      className="dropdown-item w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       <Icons.Logout />
                       <span>ログアウト</span>

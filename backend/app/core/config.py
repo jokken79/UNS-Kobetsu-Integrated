@@ -84,13 +84,27 @@ class Settings(BaseSettings):
     DISPATCH_MANAGER_NAME: str = "中山 雅和"
     DISPATCH_MANAGER_POSITION: str = "代表取締役"
 
+    # 派遣元責任者 (Dispatch Responsible Person - for contracts)
+    DISPATCH_RESPONSIBLE_DEPARTMENT: str = "営業部"
+    DISPATCH_RESPONSIBLE_POSITION: str = "取締役 部長"
+    DISPATCH_RESPONSIBLE_NAME: str = "中山 欣英"
+    DISPATCH_RESPONSIBLE_PHONE: str = "052-938-8840"
+
+    # 派遣元苦情処理担当者 (Complaint Handler)
+    DISPATCH_COMPLAINT_DEPARTMENT: str = "営業部"
+    DISPATCH_COMPLAINT_POSITION: str = "取締役 部長"
+    DISPATCH_COMPLAINT_NAME: str = "中山 欣英"
+    DISPATCH_COMPLAINT_PHONE: str = "052-938-8840"
+
     # File Storage
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
-    # PDF Generation
+    # Document Generation
     PDF_TEMPLATE_DIR: str = "./templates/pdf"
-    PDF_OUTPUT_DIR: str = "./output/pdf"
+    PDF_OUTPUT_DIR: str = "./outputs/pdf"  # Maps to uns_kobetsu_outputs volume
+    EXCEL_TEMPLATE_DIR: str = "./templates/excel"  # Excel templates for document generation
+    DEFAULT_DOCUMENT_FORMAT: str = "xlsx"  # Default output format: xlsx or pdf
 
     class Config:
         env_file = ".env"

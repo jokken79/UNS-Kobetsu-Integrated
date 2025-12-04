@@ -273,15 +273,15 @@ async def change_password(
 
 
 @router.post("/logout")
-async def logout(current_user: dict = Depends(get_current_user)):
+async def logout():
     """
     Logout current user.
 
-    In a production system, this would invalidate the token
-    (e.g., add to a blacklist in Redis).
-    """
-    # In production, you would:
-    # 1. Add the token to a blacklist in Redis
-    # 2. Clear any server-side session data
+    This endpoint does not require authentication to allow logout even with expired tokens.
+    The actual logout happens on the client side (clearing localStorage).
 
+    In a production system, you would:
+    1. Add the token to a blacklist in Redis (if token is provided and valid)
+    2. Clear any server-side session data
+    """
     return {"message": "Successfully logged out"}

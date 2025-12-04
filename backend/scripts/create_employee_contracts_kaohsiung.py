@@ -14,6 +14,7 @@ Usage:
 """
 import argparse
 import sys
+import logging
 from pathlib import Path
 from datetime import date, time, datetime, timedelta
 from decimal import Decimal
@@ -21,6 +22,13 @@ import json
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
@@ -554,6 +562,7 @@ def main():
                 print(f"{status_icon} {result['employee_number']}: {result.get('contract_number', 'N/A')} - {result['status']}")
 
             except Exception as e:
+                logger.error(f"Error creating contract for employee {employee.employee_number}: {e}", exc_info=True)
                 error_result = {
                     "status": "error",
                     "employee_number": employee.employee_number,
@@ -605,6 +614,7 @@ def main():
                 print(f"  - {r['employee_number']}: {r['error']}")
 
     except Exception as e:
+        logger.critical(f"FATAL ERROR: {e}", exc_info=True)
         print(f"\n❌ FATAL ERROR: {e}")
         db.rollback()
         raise

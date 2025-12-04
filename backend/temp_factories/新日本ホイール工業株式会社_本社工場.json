@@ -1,0 +1,55 @@
+{
+  "factory_id": "新日本ホイール工業株式会社_本社工場",
+  "client_company": {
+    "name": "新日本ホイール工業株式会社",
+    "address": "静岡県浜松市浜名区新都田4-1-2",
+    "phone": "053-428-4551",
+    "responsible_person": {
+      "department": "総務部",
+      "name": "",
+      "phone": "053-428-4551"
+    },
+    "complaint_handler": {
+      "department": "総務部",
+      "name": "",
+      "phone": "053-428-4551"
+    }
+  },
+  "plant": {
+    "name": "本社工場",
+    "address": "静岡県浜松市浜名区新都田4-1-2",
+    "phone": "053-428-4551"
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {
+    "work_hours": "",
+    "break_time": "",
+    "calendar": "",
+    "start_date": "",
+    "end_date": "",
+    "conflict_date": "",
+    "overtime_labor": "",
+    "time_unit": "15.0"
+  },
+  "payment": {
+    "closing_date": "",
+    "payment_date": "",
+    "bank_account": ""
+  },
+  "agreement": {
+    "period": "",
+    "explainer": ""
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "factory_id": "西岡工作所_本社工場",
+  "client_company": {
+    "name": "有限会社西岡工作所",
+    "address": "愛知県",
+    "phone": "",
+    "responsible_person": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    },
+    "complaint_handler": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    }
+  },
+  "plant": {
+    "name": "本社工場",
+    "address": "愛知県",
+    "phone": ""
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {},
+  "payment": {},
+  "agreement": {}
+}

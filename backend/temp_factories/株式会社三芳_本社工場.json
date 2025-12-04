@@ -1,0 +1,55 @@
+{
+  "factory_id": "株式会社三芳_本社工場",
+  "client_company": {
+    "name": "株式会社三芳",
+    "address": "愛知県愛知郡東郷町大字春木字千子554-426",
+    "phone": "",
+    "responsible_person": {
+      "department": "",
+      "name": "三芳顕一",
+      "phone": ""
+    },
+    "complaint_handler": {
+      "department": "",
+      "name": "",
+      "phone": ""
+    }
+  },
+  "plant": {
+    "name": "本社工場",
+    "address": "愛知県愛知郡東郷町大字春木字千子554-426",
+    "phone": ""
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {
+    "work_hours": "",
+    "break_time": "",
+    "calendar": "",
+    "start_date": "",
+    "end_date": "",
+    "conflict_date": "",
+    "overtime_labor": "",
+    "time_unit": "15.0"
+  },
+  "payment": {
+    "closing_date": "",
+    "payment_date": "",
+    "bank_account": ""
+  },
+  "agreement": {
+    "period": "",
+    "explainer": ""
+  }
+}

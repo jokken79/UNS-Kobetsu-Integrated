@@ -27,6 +27,25 @@ router = APIRouter(redirect_slashes=False)
 # FACTORY CRUD
 # ========================================
 
+@router.get("/stats", status_code=status.HTTP_200_OK)
+async def get_factory_stats(
+    db: Session = Depends(get_db),
+    # current_user: dict = Depends(get_current_user)  # TODO: Re-enable in production
+):
+    """Get factory statistics."""
+    total_factories = db.query(func.count(Factory.id)).scalar()
+    active_factories = db.query(func.count(Factory.id)).filter(Factory.is_active == True).scalar()
+    total_lines = db.query(func.count(FactoryLine.id)).scalar()
+    active_lines = db.query(func.count(FactoryLine.id)).filter(FactoryLine.is_active == True).scalar()
+
+    return {
+        "total_factories": total_factories,
+        "active_factories": active_factories,
+        "total_lines": total_lines,
+        "active_lines": active_lines
+    }
+
+
 @router.get("", response_model=List[FactoryListItem])
 async def list_factories(
     skip: int = Query(0, ge=0),
@@ -80,6 +99,55 @@ async def list_factories(
         ))
 
     return result
+
+
+# ========================================
+# DELETE ALL ENDPOINT (Must be before /{factory_id})
+# ========================================
+
+@router.delete("/delete-all", status_code=status.HTTP_200_OK)
+async def delete_all_factories(
+    db: Session = Depends(get_db),
+    # current_user: dict = Depends(get_current_user)  # TODO: Re-enable in production
+):
+    """Delete ALL factories and factory lines from database. WARNING: This is a destructive operation!"""
+    try:
+        # Count before deletion
+        factory_count = db.query(Factory).count()
+        line_count = db.query(FactoryLine).count()
+
+        # First, unlink employees from factories and lines
+        employees_updated = db.query(Employee).filter(
+            (Employee.factory_id.isnot(None)) | (Employee.factory_line_id.isnot(None))
+        ).update({
+            'factory_id': None,
+            'factory_line_id': None,
+            'company_name': None,
+            'plant_name': None,
+            'department': None,
+            'line_name': None
+        }, synchronize_session=False)
+
+        # Delete all factory lines (now safe)
+        db.query(FactoryLine).delete()
+
+        # Delete all factories
+        db.query(Factory).delete()
+
+        db.commit()
+
+        return {
+            "message": f"Successfully deleted all factories and lines",
+            "deleted_count": factory_count,
+            "deleted_lines": line_count,
+            "employees_unlinked": employees_updated
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete factories: {str(e)}"
+        )
 
 
 @router.get("/{factory_id}", response_model=FactoryResponse)

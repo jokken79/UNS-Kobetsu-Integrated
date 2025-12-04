@@ -11,6 +11,7 @@ Usage:
 """
 import argparse
 import sys
+import logging
 from pathlib import Path
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
@@ -22,6 +23,13 @@ import pandas as pd
 from sqlalchemy.exc import IntegrityError
 from app.core.database import SessionLocal
 from app.models.employee import Employee
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 # Column mapping: Excel column index (1-based) -> Employee model field
@@ -78,8 +86,8 @@ def parse_date(value) -> date | None:
             from datetime import timedelta
             excel_epoch = datetime(1899, 12, 30)
             return (excel_epoch + timedelta(days=int(value))).date()
-        except:
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Could not parse Excel serial date '{value}': {e}")
     return None
 
 
@@ -202,10 +210,11 @@ def import_employees(file_path: str, sheet_name: str = 'DBGenzaiX', dry_run: boo
     print(f"{'='*60}\n")
 
     # Load with pandas (faster than openpyxl for data reading)
-    print("Loading Excel file with pandas...")
+    logger.info(f"Loading Excel file with pandas...")
     try:
         df = pd.read_excel(file_path, sheet_name=sheet_name, engine='openpyxl')
     except Exception as e:
+        logger.error(f"ERROR loading file: {e}", exc_info=True)
         print(f"ERROR loading file: {e}")
         return False
 
@@ -331,6 +340,7 @@ def import_employees(file_path: str, sheet_name: str = 'DBGenzaiX', dry_run: boo
 
             except Exception as e:
                 stats['errors'] += 1
+                logger.error(f"  ERROR row {idx}: {e}", exc_info=True)
                 print(f"  ERROR row {idx}: {e}")
                 continue
 
@@ -341,6 +351,7 @@ def import_employees(file_path: str, sheet_name: str = 'DBGenzaiX', dry_run: boo
             print("\nDRY RUN - No changes made.")
 
     except Exception as e:
+        logger.critical(f"FATAL ERROR: {e}", exc_info=True)
         print(f"\nFATAL ERROR: {e}")
         db.rollback()
         return False

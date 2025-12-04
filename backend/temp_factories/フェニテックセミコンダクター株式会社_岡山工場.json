@@ -1,0 +1,55 @@
+{
+  "factory_id": "フェニテックセミコンダクター株式会社_岡山工場",
+  "client_company": {
+    "name": "フェニテックセミコンダクター株式会社",
+    "address": "岡山県井原市木之子町6833番地",
+    "phone": "0866-62-4121",
+    "responsible_person": {
+      "department": "総務部",
+      "name": "",
+      "phone": "0866-62-4121"
+    },
+    "complaint_handler": {
+      "department": "総務部",
+      "name": "",
+      "phone": "0866-62-4121"
+    }
+  },
+  "plant": {
+    "name": "岡山工場",
+    "address": "岡山県井原市木之子町6833番地",
+    "phone": "0866-62-4121"
+  },
+  "lines": [],
+  "dispatch_company": {
+    "responsible_person": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    },
+    "complaint_handler": {
+      "department": "営業部",
+      "name": "",
+      "phone": "052-938-8840"
+    }
+  },
+  "schedule": {
+    "work_hours": "",
+    "break_time": "",
+    "calendar": "",
+    "start_date": "",
+    "end_date": "",
+    "conflict_date": "",
+    "overtime_labor": "",
+    "time_unit": "15.0"
+  },
+  "payment": {
+    "closing_date": "",
+    "payment_date": "",
+    "bank_account": ""
+  },
+  "agreement": {
+    "period": "",
+    "explainer": ""
+  }
+}

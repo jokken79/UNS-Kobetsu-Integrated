@@ -683,12 +683,14 @@ export interface EmployeeListItem {
   plant_name?: string
   department?: string
   line_name?: string
+  position?: string
   hire_date: string
   hourly_rate?: number  // 時給 (lo que pagamos al empleado)
   billing_rate?: number  // 単価 (lo que la fábrica nos paga)
   status: string
   nationality: string
   visa_expiry_date?: string
+  date_of_birth?: string
   age?: number
 }
 

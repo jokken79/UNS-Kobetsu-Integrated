@@ -211,6 +211,36 @@ async def get_employees_for_contract(
     return result
 
 
+# ========================================
+# DELETE ALL ENDPOINT (Must be before /{employee_id})
+# ========================================
+
+@router.delete("/delete-all", status_code=http_status.HTTP_200_OK)
+async def delete_all_employees(
+    db: Session = Depends(get_db),
+    # current_user: dict = Depends(get_current_user)  # TODO: Re-enable in production
+):
+    """Delete ALL employees from database. WARNING: This is a destructive operation!"""
+    try:
+        # Count employees before deletion
+        count = db.query(Employee).count()
+
+        # Delete all employees
+        db.query(Employee).delete()
+        db.commit()
+
+        return {
+            "message": f"Successfully deleted all employees",
+            "deleted_count": count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete employees: {str(e)}"
+        )
+
+
 @router.get("/{employee_id}", response_model=EmployeeResponse)
 async def get_employee(
     employee_id: int,

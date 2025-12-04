@@ -112,6 +112,10 @@ class Factory(Base):
     # 抵触日 (Contract limit date - very important!)
     conflict_date = Column(Date, index=True)  # 抵触日
 
+    # 契約期間 (Contract period)
+    contract_start_date = Column(Date, index=True)  # 契約開始日
+    contract_end_date = Column(Date, index=True)  # 契約終了日
+
     # ========================================
     # Contract Cycle Configuration
     # ========================================

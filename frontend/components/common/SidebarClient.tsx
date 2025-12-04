@@ -42,11 +42,6 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
-  ChevronDown: () => (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  ),
   Menu: () => (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -55,6 +50,16 @@ const Icons = {
   Close: () => (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
+  ChevronLeft: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+  ),
+  ChevronRight: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
     </svg>
   ),
 }
@@ -114,6 +119,7 @@ export function SidebarClient() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -122,86 +128,122 @@ export function SidebarClient() {
   const NavContent = () => (
     <>
       {/* Logo */}
-      <div className="px-6 py-6 border-b border-white/10">
+      <div className="px-6 py-6 border-b border-gray-200">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600
-                          flex items-center justify-center shadow-lg shadow-blue-500/30
-                          group-hover:shadow-blue-500/50 transition-all duration-300">
+          <div className="relative w-10 h-10 rounded-lg bg-theme-600
+                          flex items-center justify-center
+                          hover:bg-theme-700 transition-colors duration-200">
             <span className="text-white font-bold text-lg">U</span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white tracking-tight">UNS Kobetsu</h1>
-            <p className="text-xs text-gray-400">個別契約書管理システム</p>
-          </div>
+          {!collapsed && (
+            <div className="animate-fade-in">
+              <h1 className="text-lg font-bold text-gray-900 tracking-tight">UNS Kobetsu</h1>
+              <p className="text-xs text-gray-500">個別契約書管理システム</p>
+            </div>
+          )}
         </Link>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-6 overflow-y-auto scrollbar-thin">
-        <div className="px-3 mb-3">
-          <span className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            メインメニュー
-          </span>
-        </div>
-        <ul className="space-y-1.5">
+        {!collapsed && (
+          <div className="px-3 mb-3">
+            <span className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              メインメニュー
+            </span>
+          </div>
+        )}
+        <ul className="space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon
+            const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
 
             return (
               <li key={item.name}>
                 <Link
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="sidebar-link"
+                  className={`group relative flex items-center gap-3 px-3 py-2 mx-2 rounded-lg
+                            transition-all duration-150 ${
+                    isActive
+                      ? 'bg-theme-50 text-theme-600 font-medium'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                  title={collapsed ? item.name : undefined}
                 >
-                  <span className="icon">
+                  <span className="flex-shrink-0">
                     <Icon />
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="block font-medium truncate">{item.name}</span>
-                    <span className="block text-xs text-gray-500 truncate mt-0.5 group-hover:text-gray-400">
-                      {item.description}
-                    </span>
-                  </div>
+                  {!collapsed && (
+                    <div className="flex-1 min-w-0">
+                      <span className="block font-medium truncate text-sm">{item.name}</span>
+                      <span className={`block text-xs truncate transition-colors ${
+                        isActive ? 'text-theme-500' : 'text-gray-400'
+                      }`}>
+                        {item.description}
+                      </span>
+                    </div>
+                  )}
                 </Link>
               </li>
             )
           })}
         </ul>
 
-        {/* Quick Stats */}
-        <div className="px-3 mt-8 mb-3">
-          <span className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            クイック情報
-          </span>
-        </div>
-        <div className="mx-3 p-4 rounded-xl bg-white/5 border border-white/10">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">--</p>
-              <p className="text-xs text-gray-400 mt-1">有効契約</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-amber-400">--</p>
-              <p className="text-xs text-gray-400 mt-1">期限間近</p>
+        {/* Quick Stats - Clean Design */}
+        {!collapsed && (
+          <div className="px-5 mt-8">
+            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-md bg-theme-600 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-gray-900">クイック情報</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white p-3 rounded-md border border-gray-200">
+                  <p className="text-2xl font-bold text-gray-900 mb-1">--</p>
+                  <p className="text-xs text-gray-500">有効契約</p>
+                </div>
+                <div className="bg-white p-3 rounded-md border border-gray-200">
+                  <p className="text-2xl font-bold text-amber-600 mb-1">--</p>
+                  <p className="text-xs text-gray-500">期限間近</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-white/10 bg-black/20">
+      <div className="px-4 py-4 border-t border-gray-200 bg-gray-50">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800
-                          flex items-center justify-center">
+          <div className="w-8 h-8 rounded-md bg-gray-200
+                          flex items-center justify-center flex-shrink-0 text-gray-600">
             <Icons.Building />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">株式会社UNS企画</p>
-            <p className="text-xs text-gray-500">派13-123456</p>
-          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">株式会社UNS企画</p>
+              <p className="text-xs text-gray-500">派13-123456</p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Collapse Toggle - Desktop Only */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-300
+                 rounded-full items-center justify-center text-gray-600 hover:bg-gray-50
+                 transition-all duration-200 shadow-sm z-50 group"
+        aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
+      >
+        {collapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
+      </button>
     </>
   )
 
@@ -219,8 +261,8 @@ export function SidebarClient() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-lg border border-gray-200
-                   lg:hidden hover:bg-gray-50 transition-colors"
+        className="fixed top-4 left-4 z-50 p-2 rounded-xl bg-white shadow-lg border border-gray-200
+                   lg:hidden hover:bg-gray-50 transition-all duration-300 hover:scale-105"
         aria-label="メニューを開く"
       >
         <Icons.Menu />
@@ -236,13 +278,13 @@ export function SidebarClient() {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-72 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800
-                    text-white flex flex-col z-50 shadow-2xl transform transition-transform duration-300
+        className={`fixed left-0 top-0 h-screen w-72 bg-white border-r border-gray-200
+                    flex flex-col z-50 shadow-lg transform transition-transform duration-300
                     lg:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <button
           onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
           aria-label="メニューを閉じる"
         >
           <Icons.Close />
@@ -251,7 +293,9 @@ export function SidebarClient() {
       </aside>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex sidebar">
+      <aside
+        className={`hidden lg:flex sidebar transition-all duration-300 ${collapsed ? 'w-20' : 'w-72'}`}
+      >
         <NavContent />
       </aside>
     </>

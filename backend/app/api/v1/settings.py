@@ -46,11 +46,29 @@ class ManagerInfo(BaseModel):
     position: str
 
 
+class ResponsiblePersonInfo(BaseModel):
+    """派遣元責任者 (for contracts) information."""
+    department: str
+    position: str
+    name: str
+    phone: str
+
+
+class ComplaintHandlerInfo(BaseModel):
+    """派遣元苦情処理担当者 information."""
+    department: str
+    position: str
+    name: str
+    phone: str
+
+
 class CompanySettings(BaseModel):
     """Full company settings response."""
     company: CompanyInfo
     licenses: LicenseInfo
     manager: ManagerInfo
+    dispatch_responsible: ResponsiblePersonInfo
+    complaint_handler: ComplaintHandlerInfo
 
 
 @router.get("/company", response_model=CompanySettings)
@@ -83,6 +101,18 @@ async def get_company_settings():
             name=settings.DISPATCH_MANAGER_NAME,
             position=settings.DISPATCH_MANAGER_POSITION,
         ),
+        dispatch_responsible=ResponsiblePersonInfo(
+            department=settings.DISPATCH_RESPONSIBLE_DEPARTMENT,
+            position=settings.DISPATCH_RESPONSIBLE_POSITION,
+            name=settings.DISPATCH_RESPONSIBLE_NAME,
+            phone=settings.DISPATCH_RESPONSIBLE_PHONE,
+        ),
+        complaint_handler=ComplaintHandlerInfo(
+            department=settings.DISPATCH_COMPLAINT_DEPARTMENT,
+            position=settings.DISPATCH_COMPLAINT_POSITION,
+            name=settings.DISPATCH_COMPLAINT_NAME,
+            phone=settings.DISPATCH_COMPLAINT_PHONE,
+        ),
     )
 
 
@@ -91,8 +121,8 @@ async def get_system_info():
     """Get basic system information."""
     return {
         "app_name": settings.APP_NAME,
-        "version": settings.VERSION,
-        "environment": settings.ENVIRONMENT,
+        "version": settings.APP_VERSION,
+        "debug": settings.DEBUG,
     }
 
 

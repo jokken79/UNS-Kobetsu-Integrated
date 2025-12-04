@@ -66,6 +66,8 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
           })
+          // Redirect to login page after logout
+          window.location.href = '/login'
         }
       },
 

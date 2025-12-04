@@ -107,12 +107,6 @@ const navigation = [
     icon: Icons.Import,
     description: 'Excel/JSON取込',
   },
-  {
-    name: 'データ同期',
-    href: '/sync',
-    icon: Icons.Sync,
-    description: 'ネットワーク同期',
-  },
 ]
 
 export function Sidebar() {

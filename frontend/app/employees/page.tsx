@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { SkeletonStats, SkeletonTable } from '@/components/common/Skeleton'
+import { employeeApi } from '@/lib/api'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { employeeApi } from '@/lib/api'
-import type { EmployeeListItem } from '@/types'
-import { SkeletonStats, SkeletonTable } from '@/components/common/Skeleton'
+import { useMemo, useState } from 'react'
 
 export default function EmployeesPage() {
   const router = useRouter()
@@ -362,34 +361,37 @@ export default function EmployeesPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
                     社員番号
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[120px]">
                     氏名
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
                     国籍
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
                     年齢
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
                     時給
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
                     単価
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[120px]">
                     派遣先
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
                     配属先
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ライン
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
+                    配属ライン
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[120px]">
+                    仕事内容
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
                     ステータス
                   </th>
                 </tr>
@@ -415,10 +417,10 @@ export default function EmployeesPage() {
                       {employee.age}歳
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ¥{employee.hourly_rate ? employee.hourly_rate.toLocaleString() : '-'}
+                      ¥{employee.hourly_rate ? Math.round(parseFloat(employee.hourly_rate)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ¥{employee.billing_rate ? employee.billing_rate.toLocaleString() : '-'}
+                      ¥{employee.billing_rate ? Math.round(parseFloat(employee.billing_rate)).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {employee.company_name || '-'}
@@ -428,6 +430,9 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {employee.line_name || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {employee.position || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

@@ -2,6 +2,7 @@
 Kobetsu Keiyakusho Service
 Business logic for individual contract management.
 """
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any, Tuple
 from decimal import Decimal
@@ -15,6 +16,8 @@ from app.schemas.kobetsu_keiyakusho import (
     KobetsuKeiyakushoUpdate,
     KobetsuKeiyakushoStats,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class KobetsuService:
