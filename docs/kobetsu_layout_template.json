@@ -1,0 +1,74 @@
+{
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margins_mm": { "top": 10, "right": 10, "bottom": 10, "left": 10 }
+  },
+  "print_area": "A1:AA65",
+  "sections": [
+    {
+      "name": "title_block",
+      "description": "Título principal del contrato",
+      "x_mm": 0.0,
+      "y_mm": 0.0,
+      "width_mm": 190.0,
+      "height_mm": 12.8
+    },
+    {
+      "name": "haken_saki_block",
+      "description": "Datos generales del cliente receptor (派遣先)",
+      "x_mm": 0.0,
+      "y_mm": 12.8,
+      "width_mm": 190.0,
+      "height_mm": 25.6
+    },
+    {
+      "name": "haken_moto_block",
+      "description": "Información de la empresa de envío (派遣元)",
+      "x_mm": 0.0,
+      "y_mm": 38.4,
+      "width_mm": 190.0,
+      "height_mm": 8.5
+    },
+    {
+      "name": "job_description_block",
+      "description": "Contenido y responsabilidades del trabajo",
+      "x_mm": 0.0,
+      "y_mm": 46.9,
+      "width_mm": 190.0,
+      "height_mm": 17.0
+    },
+    {
+      "name": "work_schedule_block",
+      "description": "Periodo de asignación y horarios de trabajo",
+      "x_mm": 0.0,
+      "y_mm": 63.9,
+      "width_mm": 190.0,
+      "height_mm": 17.0
+    },
+    {
+      "name": "wage_block",
+      "description": "Tabla de tarifas y cálculos de派遣料金",
+      "x_mm": 0.0,
+      "y_mm": 81.0,
+      "width_mm": 190.0,
+      "height_mm": 68.2
+    },
+    {
+      "name": "legal_notes_block",
+      "description": "Notas legales y cláusulas generales",
+      "x_mm": 0.0,
+      "y_mm": 149.2,
+      "width_mm": 190.0,
+      "height_mm": 85.2
+    },
+    {
+      "name": "signature_block",
+      "description": "Espacios para firmas y sellos",
+      "x_mm": 0.0,
+      "y_mm": 234.4,
+      "width_mm": 190.0,
+      "height_mm": 38.4
+    }
+  ]
+}
