@@ -361,37 +361,37 @@ export default function EmployeesPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     社員番号
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[120px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     氏名
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     国籍
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     年齢
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     時給
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[80px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     単価
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[120px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     派遣先
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     配属先
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     配属ライン
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[120px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     仕事内容
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider resize-x overflow-auto min-w-[100px]">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
                     ステータス
                   </th>
                 </tr>
