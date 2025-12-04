@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>労働者派遣個別契約書 - {{ data.contract_number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm 2.5cm;
+        }
+
+        body {
+            font-family: "MS Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+            font-size: 10.5pt;
+            line-height: 1.6;
+            color: #000;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+        }
+
+        .contract-info {
+            text-align: right;
+            margin-bottom: 20px;
+            font-size: 10pt;
+        }
+
+        .section {
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 8px;
+            padding: 3px 8px;
+            background-color: #f0f0f0;
+            border-left: 4px solid #333;
+        }
+
+        .field {
+            margin-left: 15px;
+            margin-bottom: 5px;
+        }
+
+        .field-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 150px;
+        }
+
+        .field-value {
+            display: inline-block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        th, td {
+            border: 1px solid #333;
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #e8e8e8;
+            font-weight: bold;
+        }
+
+        .signature-section {
+            margin-top: 30px;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border: 1px solid #000;
+            margin-right: 5px;
+            text-align: center;
+            line-height: 15px;
+        }
+
+        .notes {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">
+        労働者派遣個別契約書
+    </div>
+
+    <div class="contract-info">
+        <div>契約番号: {{ data.contract_number }}</div>
+        <div>契約日: {{ data.contract_date | format_date_japanese }}</div>
+    </div>
+
+    <!-- 第1条: 派遣期間 -->
+    <div class="section">
+        <div class="section-title">第1条 派遣期間</div>
+        <div class="field">
+            <span class="field-label">派遣期間:</span>
+            <span class="field-value">
+                {{ data.dispatch_start_date | format_date_japanese }} ～
+                {{ data.dispatch_end_date | format_date_japanese }}
+            </span>
+        </div>
+    </div>
+
+    <!-- 第2条: 派遣先企業 -->
+    <div class="section">
+        <div class="section-title">第2条 派遣先企業</div>
+        <div class="field">
+            <span class="field-label">会社名:</span>
+            <span class="field-value">{{ data.client_company.name }}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">所在地:</span>
+            <span class="field-value">{{ data.client_company.address }}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">電話番号:</span>
+            <span class="field-value">{{ data.client_company.tel }}</span>
+        </div>
+    </div>
+
+    <!-- 第3条: 就業場所 -->
+    <div class="section">
+        <div class="section-title">第3条 就業場所</div>
+        <div class="field">
+            <span class="field-label">就業場所名:</span>
+            <span class="field-value">{{ data.worksite_name }}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">所在地:</span>
+            <span class="field-value">{{ data.worksite_address }}</span>
+        </div>
+        {% if data.organizational_unit %}
+        <div class="field">
+            <span class="field-label">組織単位:</span>
+            <span class="field-value">{{ data.organizational_unit }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 第4条: 業務内容 -->
+    <div class="section">
+        <div class="section-title">第4条 業務内容</div>
+        <div class="field">
+            <span class="field-label">業務内容:</span>
+            <span class="field-value">{{ data.work_content }}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">責任の程度:</span>
+            <span class="field-value">{{ data.responsibility_level }}</span>
+        </div>
+    </div>
+
+    <!-- 第5条: 指揮命令者 -->
+    <div class="section">
+        <div class="section-title">第5条 指揮命令者</div>
+        <div class="field">
+            <span class="field-label">氏名:</span>
+            <span class="field-value">{{ data.supervisor.name }}</span>
+        </div>
+        {% if data.supervisor.department %}
+        <div class="field">
+            <span class="field-label">所属部署:</span>
+            <span class="field-value">{{ data.supervisor.department }}</span>
+        </div>
+        {% endif %}
+        {% if data.supervisor.position %}
+        <div class="field">
+            <span class="field-label">役職:</span>
+            <span class="field-value">{{ data.supervisor.position }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 第6条: 就業時間・休憩時間 -->
+    <div class="section">
+        <div class="section-title">第6条 就業時間・休憩時間</div>
+        <div class="field">
+            <span class="field-label">就業曜日:</span>
+            <span class="field-value">{{ data.schedule.work_days | format_work_days }}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">就業時間:</span>
+            <span class="field-value">
+                {{ data.schedule.work_start_time | format_time }} ～
+                {{ data.schedule.work_end_time | format_time }}
+            </span>
+        </div>
+        <div class="field">
+            <span class="field-label">休憩時間:</span>
+            <span class="field-value">{{ data.schedule.break_time_minutes }}分</span>
+        </div>
+    </div>
+
+    <!-- 第7条: 時間外労働 -->
+    <div class="section">
+        <div class="section-title">第7条 時間外労働</div>
+        <div class="field">
+            <span class="field-label">1日の上限:</span>
+            <span class="field-value">{{ data.schedule.overtime_max_hours_day }}時間</span>
+        </div>
+        <div class="field">
+            <span class="field-label">1ヶ月の上限:</span>
+            <span class="field-value">{{ data.schedule.overtime_max_hours_month }}時間</span>
+        </div>
+    </div>
+
+    <!-- 第8条: 派遣料金 -->
+    <div class="section">
+        <div class="section-title">第8条 派遣料金</div>
+        <div class="field">
+            <span class="field-label">基本時給:</span>
+            <span class="field-value">{{ data.rates.hourly_rate | format_currency }}</span>
+        </div>
+        {% if data.rates.overtime_rate %}
+        <div class="field">
+            <span class="field-label">残業時給:</span>
+            <span class="field-value">{{ data.rates.overtime_rate | format_currency }}</span>
+        </div>
+        {% endif %}
+        {% if data.rates.holiday_rate %}
+        <div class="field">
+            <span class="field-label">休日時給:</span>
+            <span class="field-value">{{ data.rates.holiday_rate | format_currency }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 第9条: 派遣労働者数 -->
+    <div class="section">
+        <div class="section-title">第9条 派遣労働者</div>
+        <div class="field">
+            <span class="field-label">派遣労働者数:</span>
+            <span class="field-value">{{ data.number_of_workers }}名</span>
+        </div>
+
+        {% if data.employees %}
+        <table>
+            <thead>
+                <tr>
+                    <th>社員番号</th>
+                    <th>氏名</th>
+                    <th>フリガナ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in data.employees %}
+                <tr>
+                    <td>{{ employee.employee_number }}</td>
+                    <td>{{ employee.full_name }}</td>
+                    <td>{{ employee.full_name_kana }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    <!-- 第10条: 安全衛生 -->
+    <div class="section">
+        <div class="section-title">第10条 安全衛生</div>
+        <div class="field">
+            {{ data.safety_measures }}
+        </div>
+    </div>
+
+    <!-- 第11条: 福利厚生施設 -->
+    <div class="section">
+        <div class="section-title">第11条 福利厚生施設</div>
+        <div class="field">
+            {{ data.welfare_facilities | join('、') }}
+        </div>
+    </div>
+
+    <!-- 署名欄 -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <strong>派遣元（甲）</strong><br>
+            {{ data.dispatch_company.name }}<br>
+            {{ data.dispatch_company.address }}<br>
+            電話: {{ data.dispatch_company.tel }}<br>
+            許可番号: {{ data.dispatch_company.license_number }}<br>
+            <br>
+            責任者: {{ data.dispatch_manager.name }}　印
+        </div>
+
+        <div class="signature-box">
+            <strong>派遣先（乙）</strong><br>
+            {{ data.client_company.name }}<br>
+            {{ data.client_company.address }}<br>
+            電話: {{ data.client_company.tel }}<br>
+            <br>
+            責任者: {{ data.client_manager.name }}　印
+        </div>
+    </div>
+
+    {% if data.notes %}
+    <div class="notes">
+        <strong>備考:</strong><br>
+        {{ data.notes }}
+    </div>
+    {% endif %}
+</body>
+</html>
