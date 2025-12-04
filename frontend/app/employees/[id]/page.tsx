@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { employeeApi, factoryApi } from '@/lib/api'
-import FactoryCascadeSelector from '@/components/factory/FactoryCascadeSelector'
-import type { EmployeeUpdate, FactoryCascadeData } from '@/types'
 import { Breadcrumbs, dashboardBreadcrumb } from '@/components/common/Breadcrumbs'
+import FactoryCascadeSelector from '@/components/factory/FactoryCascadeSelector'
+import { employeeApi } from '@/lib/api'
+import type { EmployeeUpdate, FactoryCascadeData } from '@/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function EditEmployeePage() {
   const router = useRouter()
@@ -28,11 +28,16 @@ export default function EditEmployeePage() {
   // Update formData when employee data loads
   useEffect(() => {
     if (employee) {
-      setFormData({
+      console.log('Employee loaded:', employee)
+      // Map gender values for display
+      const genderDisplay = employee.gender === 'male' ? '男' :
+                           employee.gender === 'female' ? '女' :
+                           employee.gender
+      const newFormData = {
         full_name_kanji: employee.full_name_kanji,
         full_name_kana: employee.full_name_kana,
         full_name_romaji: employee.full_name_romaji,
-        gender: employee.gender,
+        gender: genderDisplay,
         date_of_birth: employee.date_of_birth,
         nationality: employee.nationality,
         phone: employee.phone,
@@ -45,7 +50,9 @@ export default function EditEmployeePage() {
         visa_type: employee.visa_type,
         visa_expiry_date: employee.visa_expiry_date,
         notes: employee.notes,
-      })
+      }
+      console.log('Setting formData:', newFormData)
+      setFormData(newFormData)
     }
   }, [employee])
 

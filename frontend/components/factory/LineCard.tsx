@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
-import { formatCurrency, formatDate } from '@/lib/utils'
 import { useConfirmActions } from '@/components/common/ConfirmContext'
-import type { FactoryLineResponse, EmployeeResponse } from '@/types'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import type { EmployeeResponse, FactoryLineResponse } from '@/types'
+import { useState } from 'react'
 
 interface LineCardProps {
   line: FactoryLineResponse
@@ -41,12 +40,15 @@ export function LineCard({
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    console.log('Delete button clicked for line', line.id)
 
     const confirmed = await confirmDelete(
       `${line.department ? `${line.department} / ` : ''}${line.line_name || 'ライン'}`
     )
+    console.log('Confirmed?', confirmed)
 
     if (confirmed) {
+      console.log('Calling onDelete with line.id', line.id)
       onDelete(line.id)
     }
   }

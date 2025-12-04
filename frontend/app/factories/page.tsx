@@ -73,17 +73,59 @@ export default function FactoriesPage() {
         company_name: factoryDetail.company_name,
         company_address: factoryDetail.company_address,
         company_phone: factoryDetail.company_phone,
+        company_fax: factoryDetail.company_fax,
         plant_name: factoryDetail.plant_name,
         plant_address: factoryDetail.plant_address,
         plant_phone: factoryDetail.plant_phone,
         client_responsible_department: factoryDetail.client_responsible_department,
+        client_responsible_position: factoryDetail.client_responsible_position,
         client_responsible_name: factoryDetail.client_responsible_name,
         client_responsible_phone: factoryDetail.client_responsible_phone,
         client_complaint_department: factoryDetail.client_complaint_department,
+        client_complaint_position: factoryDetail.client_complaint_position,
         client_complaint_name: factoryDetail.client_complaint_name,
         client_complaint_phone: factoryDetail.client_complaint_phone,
-        conflict_date: factoryDetail.conflict_date,
+        dispatch_responsible_department: factoryDetail.dispatch_responsible_department,
+        dispatch_responsible_name: factoryDetail.dispatch_responsible_name,
+        dispatch_responsible_phone: factoryDetail.dispatch_responsible_phone,
+        dispatch_complaint_department: factoryDetail.dispatch_complaint_department,
+        dispatch_complaint_name: factoryDetail.dispatch_complaint_name,
+        dispatch_complaint_phone: factoryDetail.dispatch_complaint_phone,
+        work_hours_description: factoryDetail.work_hours_description,
+        break_time_description: factoryDetail.break_time_description,
+        calendar_description: factoryDetail.calendar_description,
+        day_shift_start: factoryDetail.day_shift_start,
+        day_shift_end: factoryDetail.day_shift_end,
+        night_shift_start: factoryDetail.night_shift_start,
+        night_shift_end: factoryDetail.night_shift_end,
         break_minutes: factoryDetail.break_minutes,
+        overtime_description: factoryDetail.overtime_description,
+        overtime_max_hours_day: factoryDetail.overtime_max_hours_day,
+        overtime_max_hours_month: factoryDetail.overtime_max_hours_month,
+        overtime_max_hours_year: factoryDetail.overtime_max_hours_year,
+        overtime_special_max_month: factoryDetail.overtime_special_max_month,
+        overtime_special_count_year: factoryDetail.overtime_special_count_year,
+        holiday_work_description: factoryDetail.holiday_work_description,
+        holiday_work_max_days_month: factoryDetail.holiday_work_max_days_month,
+        conflict_date: factoryDetail.conflict_date,
+        contract_start_date: factoryDetail.contract_start_date,
+        contract_end_date: factoryDetail.contract_end_date,
+        contract_cycle_type: factoryDetail.contract_cycle_type,
+        cycle_day_type: factoryDetail.cycle_day_type,
+        fiscal_year_end_month: factoryDetail.fiscal_year_end_month,
+        fiscal_year_end_day: factoryDetail.fiscal_year_end_day,
+        contract_renewal_days_before: factoryDetail.contract_renewal_days_before,
+        time_unit_minutes: factoryDetail.time_unit_minutes,
+        closing_date: factoryDetail.closing_date,
+        payment_date: factoryDetail.payment_date,
+        bank_account: factoryDetail.bank_account,
+        worker_closing_date: factoryDetail.worker_closing_date,
+        worker_payment_date: factoryDetail.worker_payment_date,
+        worker_calendar: factoryDetail.worker_calendar,
+        agreement_period: factoryDetail.agreement_period,
+        agreement_explainer: factoryDetail.agreement_explainer,
+        is_active: factoryDetail.is_active,
+        notes: factoryDetail.notes,
       })
     }
   }, [factoryDetail])
@@ -117,17 +159,59 @@ export default function FactoriesPage() {
         company_name: factoryDetail.company_name,
         company_address: factoryDetail.company_address,
         company_phone: factoryDetail.company_phone,
+        company_fax: factoryDetail.company_fax,
         plant_name: factoryDetail.plant_name,
         plant_address: factoryDetail.plant_address,
         plant_phone: factoryDetail.plant_phone,
         client_responsible_department: factoryDetail.client_responsible_department,
+        client_responsible_position: factoryDetail.client_responsible_position,
         client_responsible_name: factoryDetail.client_responsible_name,
         client_responsible_phone: factoryDetail.client_responsible_phone,
         client_complaint_department: factoryDetail.client_complaint_department,
+        client_complaint_position: factoryDetail.client_complaint_position,
         client_complaint_name: factoryDetail.client_complaint_name,
         client_complaint_phone: factoryDetail.client_complaint_phone,
-        conflict_date: factoryDetail.conflict_date,
+        dispatch_responsible_department: factoryDetail.dispatch_responsible_department,
+        dispatch_responsible_name: factoryDetail.dispatch_responsible_name,
+        dispatch_responsible_phone: factoryDetail.dispatch_responsible_phone,
+        dispatch_complaint_department: factoryDetail.dispatch_complaint_department,
+        dispatch_complaint_name: factoryDetail.dispatch_complaint_name,
+        dispatch_complaint_phone: factoryDetail.dispatch_complaint_phone,
+        work_hours_description: factoryDetail.work_hours_description,
+        break_time_description: factoryDetail.break_time_description,
+        calendar_description: factoryDetail.calendar_description,
+        day_shift_start: factoryDetail.day_shift_start,
+        day_shift_end: factoryDetail.day_shift_end,
+        night_shift_start: factoryDetail.night_shift_start,
+        night_shift_end: factoryDetail.night_shift_end,
         break_minutes: factoryDetail.break_minutes,
+        overtime_description: factoryDetail.overtime_description,
+        overtime_max_hours_day: factoryDetail.overtime_max_hours_day,
+        overtime_max_hours_month: factoryDetail.overtime_max_hours_month,
+        overtime_max_hours_year: factoryDetail.overtime_max_hours_year,
+        overtime_special_max_month: factoryDetail.overtime_special_max_month,
+        overtime_special_count_year: factoryDetail.overtime_special_count_year,
+        holiday_work_description: factoryDetail.holiday_work_description,
+        holiday_work_max_days_month: factoryDetail.holiday_work_max_days_month,
+        conflict_date: factoryDetail.conflict_date,
+        contract_start_date: factoryDetail.contract_start_date,
+        contract_end_date: factoryDetail.contract_end_date,
+        contract_cycle_type: factoryDetail.contract_cycle_type,
+        cycle_day_type: factoryDetail.cycle_day_type,
+        fiscal_year_end_month: factoryDetail.fiscal_year_end_month,
+        fiscal_year_end_day: factoryDetail.fiscal_year_end_day,
+        contract_renewal_days_before: factoryDetail.contract_renewal_days_before,
+        time_unit_minutes: factoryDetail.time_unit_minutes,
+        closing_date: factoryDetail.closing_date,
+        payment_date: factoryDetail.payment_date,
+        bank_account: factoryDetail.bank_account,
+        worker_closing_date: factoryDetail.worker_closing_date,
+        worker_payment_date: factoryDetail.worker_payment_date,
+        worker_calendar: factoryDetail.worker_calendar,
+        agreement_period: factoryDetail.agreement_period,
+        agreement_explainer: factoryDetail.agreement_explainer,
+        is_active: factoryDetail.is_active,
+        notes: factoryDetail.notes,
       })
     }
   }
@@ -136,12 +220,15 @@ export default function FactoriesPage() {
     if (!selectedFactoryId) return
 
     try {
+      console.log('Saving factory with data:', factoryFormData)
       await updateFactoryMutation.mutateAsync(factoryFormData)
       toast.success('工場情報を更新しました')
       setIsEditingFactory(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update factory:', error)
-      toast.error('更新に失敗しました')
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      toast.error(`更新に失敗しました: ${error.response?.data?.detail || error.message}`)
     }
   }
 
@@ -174,6 +261,9 @@ export default function FactoriesPage() {
   }
 
   const handleDeleteLine = async (lineId: number) => {
+    const confirmed = await confirmDelete('このライン')
+    if (!confirmed) return
+
     try {
       await factoryApi.deleteLine(lineId)
       toast.success('ラインを削除しました')
@@ -231,6 +321,18 @@ export default function FactoriesPage() {
     </div>
   )
 
+  // Check authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    setIsAuthenticated(!!token)
+    console.log('Auth token present?', !!token)
+  }, [])
+
+  const handleLoginRedirect = () => {
+    router.push('/login')
+  }
+
   return (
     <>
       {/* Breadcrumbs */}
@@ -238,6 +340,30 @@ export default function FactoriesPage() {
         { label: 'ダッシュボード', href: '/' },
         { label: '派遣先企業・工場管理', href: '/factories' }
       ]} />
+
+      {/* Authentication Warning */}
+      {!isAuthenticated && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                編集機能を使用するにはログインが必要です。
+                <button
+                  onClick={handleLoginRedirect}
+                  className="ml-2 underline font-medium text-yellow-700 hover:text-yellow-600"
+                >
+                  ログインページへ
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-120px)] bg-gray-50">
@@ -499,49 +625,142 @@ export default function FactoriesPage() {
                   <div className="space-y-2">
                     <div>
                       <label className="text-sm text-gray-600">契約開始日</label>
-                      <p className="font-medium">
-                        {factoryDetail.contract_start_date ?
-                          new Date(factoryDetail.contract_start_date).toLocaleDateString('ja-JP') : '未設定'}
-                      </p>
+                      {isEditingFactory ? (
+                        <input
+                          type="date"
+                          value={factoryFormData.contract_start_date || ''}
+                          onChange={(e) => handleFieldChange('contract_start_date', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">
+                          {factoryDetail.contract_start_date ?
+                            new Date(factoryDetail.contract_start_date).toLocaleDateString('ja-JP') : '未設定'}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">契約終了日</label>
-                      <p className="font-medium">
-                        {factoryDetail.contract_end_date ?
-                          new Date(factoryDetail.contract_end_date).toLocaleDateString('ja-JP') : '未設定'}
-                      </p>
+                      {isEditingFactory ? (
+                        <input
+                          type="date"
+                          value={factoryFormData.contract_end_date || ''}
+                          onChange={(e) => handleFieldChange('contract_end_date', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">
+                          {factoryDetail.contract_end_date ?
+                            new Date(factoryDetail.contract_end_date).toLocaleDateString('ja-JP') : '未設定'}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">就業時間</label>
-                      <p className="font-medium">{factoryDetail.work_hours_description || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.work_hours_description || ''}
+                          onChange={(e) => handleFieldChange('work_hours_description', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.work_hours_description || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">昼勤開始</label>
-                      <p className="font-medium">{factoryDetail.day_shift_start || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="time"
+                          value={factoryFormData.day_shift_start || ''}
+                          onChange={(e) => handleFieldChange('day_shift_start', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.day_shift_start || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">昼勤終了</label>
-                      <p className="font-medium">{factoryDetail.day_shift_end || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="time"
+                          value={factoryFormData.day_shift_end || ''}
+                          onChange={(e) => handleFieldChange('day_shift_end', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.day_shift_end || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">夜勤開始</label>
-                      <p className="font-medium">{factoryDetail.night_shift_start || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="time"
+                          value={factoryFormData.night_shift_start || ''}
+                          onChange={(e) => handleFieldChange('night_shift_start', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.night_shift_start || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">夜勤終了</label>
-                      <p className="font-medium">{factoryDetail.night_shift_end || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="time"
+                          value={factoryFormData.night_shift_end || ''}
+                          onChange={(e) => handleFieldChange('night_shift_end', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.night_shift_end || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">時間外労働上限 (日)</label>
-                      <p className="font-medium">{factoryDetail.overtime_max_hours_day ? `${factoryDetail.overtime_max_hours_day}時間` : '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={factoryFormData.overtime_max_hours_day || ''}
+                          onChange={(e) => handleFieldChange('overtime_max_hours_day', parseFloat(e.target.value))}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.overtime_max_hours_day ? `${factoryDetail.overtime_max_hours_day}時間` : '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">時間外労働上限 (月)</label>
-                      <p className="font-medium">{factoryDetail.overtime_max_hours_month ? `${factoryDetail.overtime_max_hours_month}時間` : '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={factoryFormData.overtime_max_hours_month || ''}
+                          onChange={(e) => handleFieldChange('overtime_max_hours_month', parseFloat(e.target.value))}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.overtime_max_hours_month ? `${factoryDetail.overtime_max_hours_month}時間` : '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">休日労働上限 (月)</label>
-                      <p className="font-medium">{factoryDetail.holiday_work_max_days_month ? `${factoryDetail.holiday_work_max_days_month}日` : '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="number"
+                          step="1"
+                          value={factoryFormData.holiday_work_max_days_month || ''}
+                          onChange={(e) => handleFieldChange('holiday_work_max_days_month', parseInt(e.target.value))}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.holiday_work_max_days_month ? `${factoryDetail.holiday_work_max_days_month}日` : '-'}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -555,42 +774,124 @@ export default function FactoriesPage() {
                   <div className="space-y-2">
                     <div>
                       <label className="text-sm text-gray-600">締め日</label>
-                      <p className="font-medium">{factoryDetail.closing_date || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.closing_date || ''}
+                          onChange={(e) => handleFieldChange('closing_date', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.closing_date || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">支払日</label>
-                      <p className="font-medium">{factoryDetail.payment_date || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.payment_date || ''}
+                          onChange={(e) => handleFieldChange('payment_date', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.payment_date || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">労働者締め日</label>
-                      <p className="font-medium">{factoryDetail.worker_closing_date || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.worker_closing_date || ''}
+                          onChange={(e) => handleFieldChange('worker_closing_date', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.worker_closing_date || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">労働者支払日</label>
-                      <p className="font-medium">{factoryDetail.worker_payment_date || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.worker_payment_date || ''}
+                          onChange={(e) => handleFieldChange('worker_payment_date', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.worker_payment_date || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">労働者カレンダー</label>
-                      <p className="font-medium">{factoryDetail.worker_calendar || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.worker_calendar || ''}
+                          onChange={(e) => handleFieldChange('worker_calendar', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.worker_calendar || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">協定期間</label>
-                      <p className="font-medium">
-                        {factoryDetail.agreement_period ?
-                          new Date(factoryDetail.agreement_period).toLocaleDateString('ja-JP') : '未設定'}
-                      </p>
+                      {isEditingFactory ? (
+                        <input
+                          type="date"
+                          value={factoryFormData.agreement_period || ''}
+                          onChange={(e) => handleFieldChange('agreement_period', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">
+                          {factoryDetail.agreement_period ?
+                            new Date(factoryDetail.agreement_period).toLocaleDateString('ja-JP') : '未設定'}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">説明者</label>
-                      <p className="font-medium">{factoryDetail.agreement_explainer || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.agreement_explainer || ''}
+                          onChange={(e) => handleFieldChange('agreement_explainer', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.agreement_explainer || '-'}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">時間単位 (分)</label>
-                      <p className="font-medium">{factoryDetail.time_unit_minutes || '15'}分</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="number"
+                          step="1"
+                          value={factoryFormData.time_unit_minutes || 15}
+                          onChange={(e) => handleFieldChange('time_unit_minutes', parseInt(e.target.value))}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.time_unit_minutes || '15'}分</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">銀行口座</label>
-                      <p className="font-medium">{factoryDetail.bank_account || '-'}</p>
+                      {isEditingFactory ? (
+                        <input
+                          type="text"
+                          value={factoryFormData.bank_account || ''}
+                          onChange={(e) => handleFieldChange('bank_account', e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                        />
+                      ) : (
+                        <p className="font-medium">{factoryDetail.bank_account || '-'}</p>
+                      )}
                     </div>
                   </div>
                 </div>

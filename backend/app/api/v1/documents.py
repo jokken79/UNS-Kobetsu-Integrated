@@ -25,6 +25,8 @@ from app.services.dispatch_documents_service import DispatchDocumentService
 from app.services.treatment_document_service import TreatmentDocumentService
 from app.services.employment_status_report_service import EmploymentStatusReportService
 from app.services.excel_document_service import ExcelDocumentService
+from app.services.excel_xml_service import ExcelXMLService
+from app.services.kobetsu_excel_generator import KobetsuExcelGenerator
 from app.models.kobetsu_keiyakusho import KobetsuKeiyakusho, KobetsuEmployee
 from app.models.employee import Employee
 from app.models.factory import Factory
@@ -1197,8 +1199,8 @@ async def generate_excel_kobetsu_keiyakusho(
     """
     Generate 個別契約書 using Excel template.
 
-    This version preserves the exact formatting from the original Excel system.
-    The document maintains Japanese fonts, merged cells, and print areas.
+    This version creates a STANDALONE document with ALL data filled in.
+    All formulas are replaced with static values - no external dependencies.
 
     Query params:
     - format: 'xlsx' (default) or 'pdf'
@@ -1211,36 +1213,383 @@ async def generate_excel_kobetsu_keiyakusho(
 
     factory = contract.factory
 
-    # Build data dict using existing helper
-    data = _build_jinzai_haken_data(contract, factory)
+    # Build complete data dictionary for standalone Excel generation
+    data = {
+        # Company and factory info
+        "company_name": factory.company_name if factory else contract.worksite_name,
+        "company_address": factory.company_address if factory else "",
+        "factory_name": factory.plant_name if factory else "",
+        "factory_address": factory.plant_address if factory else "",
+        "department": factory.organizational_unit if factory and hasattr(factory, 'organizational_unit') else "",
+        "line": "",  # Optional line identifier
 
-    # Add additional fields for Excel template
-    data["contract_number"] = contract.contract_number
-    data["haken_moto_manager"] = contract.haken_moto_manager or {}
-    data["haken_saki_manager"] = contract.haken_saki_manager or {}
-    data["haken_moto_complaint_contact"] = contract.haken_moto_complaint_contact or {}
-    data["haken_saki_complaint_contact"] = contract.haken_saki_complaint_contact or {}
-    data["work_start_time"] = contract.work_start_time
-    data["work_end_time"] = contract.work_end_time
-    data["break_time_minutes"] = contract.break_time_minutes
-    data["overtime_max_hours_day"] = contract.overtime_max_hours_day
-    data["overtime_max_hours_month"] = contract.overtime_max_hours_month
-    data["hourly_rate"] = contract.hourly_rate
-    data["overtime_rate"] = contract.overtime_rate
-    data["holiday_rate"] = contract.holiday_rate
-    data["night_shift_rate"] = getattr(contract, 'night_rate', None)
-    data["supervisor_department"] = contract.supervisor_department
-    data["supervisor_position"] = contract.supervisor_position
-    data["supervisor_name"] = contract.supervisor_name
-    data["work_days"] = contract.work_days
+        # Worksite info
+        "worksite_name": contract.worksite_name or (f"{factory.company_name} {factory.plant_name}" if factory else ""),
+        "worksite_address": contract.worksite_address or (factory.plant_address if factory else ""),
 
-    service = ExcelDocumentService()
-    xlsx_bytes = service.generate_kobetsu_keiyakusho(data)
+        # Supervisor info
+        "supervisor_name": contract.supervisor_name or "",
+        "supervisor_department": contract.supervisor_department or "",
+        "supervisor_position": contract.supervisor_position or "",
+
+        # Manufacturing manager (派遣先責任者)
+        "mfg_manager_name": contract.haken_saki_manager.get('name', '') if contract.haken_saki_manager else "",
+        "mfg_manager_department": contract.haken_saki_manager.get('department', '') if contract.haken_saki_manager else "",
+        "mfg_manager_position": contract.haken_saki_manager.get('position', '') if contract.haken_saki_manager else "",
+
+        # Complaint handler (派遣先)
+        "complaint_handler_name": contract.haken_saki_complaint_contact.get('name', '') if contract.haken_saki_complaint_contact else "",
+        "complaint_handler_dept": contract.haken_saki_complaint_contact.get('department', '') if contract.haken_saki_complaint_contact else "",
+        "complaint_handler_pos": contract.haken_saki_complaint_contact.get('position', '') if contract.haken_saki_complaint_contact else "",
+
+        # Work content
+        "work_content": contract.work_content or "機械オペレーター及び機械メンテナンス他付随する業務",
+
+        # Dispatch period
+        "dispatch_start_date": contract.dispatch_start_date,
+        "dispatch_end_date": contract.dispatch_end_date,
+        "num_workers": contract.number_of_workers or 1,
+
+        # Work schedule
+        "work_days_text": _format_work_days(contract.work_days) if contract.work_days else "月～金（祝日、年末年始、夏季休業を除く。）",
+        "work_start_time": contract.work_start_time.strftime("%H:%M") if contract.work_start_time else "08:00",
+        "work_end_time": contract.work_end_time.strftime("%H:%M") if contract.work_end_time else "17:00",
+        "break_duration_minutes": contract.break_time_minutes or 60,
+        "break_time_text": f"{contract.break_time_minutes or 60}分",
+
+        # Overtime
+        "overtime_hours_per_day": float(contract.overtime_max_hours_day) if contract.overtime_max_hours_day else 4,
+        "overtime_hours_per_month": float(contract.overtime_max_hours_month) if contract.overtime_max_hours_month else 45,
+        "overtime_text": f"1日{float(contract.overtime_max_hours_day) if contract.overtime_max_hours_day else 4}時間、1ヶ月{float(contract.overtime_max_hours_month) if contract.overtime_max_hours_month else 45}時間を限度とする",
+
+        # Rates
+        "hourly_rate": float(contract.hourly_rate) if contract.hourly_rate else 1700,
+
+        # Restriction date
+        "restriction_date": factory.conflict_date.strftime("%Y年%m月%d日") if factory and factory.conflict_date else "",
+    }
+
+    # Generate standalone Excel document
+    xlsx_bytes = KobetsuExcelGenerator.generate(data)
 
     factory_name = (factory.plant_name or factory.company_name if factory else "").replace(" ", "_")
     filename = f"個別契約書_{factory_name}_{contract.contract_number}"
 
     return _excel_response(xlsx_bytes, filename, format, subfolder="contracts")
+
+
+@router.get("/excel2/{contract_id}/tsuchisho")
+async def generate_excel2_tsuchisho(
+    contract_id: int,
+    format: str = Query("xlsx", description="Output format: 'xlsx' or 'pdf'"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate 通知書 (Notification) using NEW Excel generator (Sheet 2).
+
+    This version creates a STANDALONE document with ALL data filled in.
+    All formulas are replaced with static values - no external dependencies.
+    """
+    contract = db.query(KobetsuKeiyakusho).filter(
+        KobetsuKeiyakusho.id == contract_id
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    factory = contract.factory
+
+    # Get employees for this contract
+    kobetsu_employees = db.query(KobetsuEmployee).filter(
+        KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
+    ).all()
+
+    # Build data dictionary
+    data = _build_excel_document_data(contract, factory, kobetsu_employees)
+
+    xlsx_bytes = KobetsuExcelGenerator.generate_tsuchisho(data)
+
+    factory_name = (factory.plant_name or factory.company_name if factory else "").replace(" ", "_")
+    filename = f"通知書_{factory_name}_{contract.contract_number}"
+
+    return _excel_response(xlsx_bytes, filename, format, subfolder="notifications")
+
+
+@router.get("/excel2/{contract_id}/daicho")
+async def generate_excel2_daicho(
+    contract_id: int,
+    employee_id: Optional[int] = None,
+    format: str = Query("xlsx", description="Output format: 'xlsx' or 'pdf'"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate DAICHO (派遣先管理台帳 - Registry) using NEW Excel generator (Sheet 3).
+
+    This is the destination registry for tracking dispatched workers.
+    """
+    contract = db.query(KobetsuKeiyakusho).filter(
+        KobetsuKeiyakusho.id == contract_id
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    # Get specific employee or first employee
+    if employee_id:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id,
+            KobetsuEmployee.employee_id == employee_id
+        ).first()
+    else:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
+        ).first()
+
+    if not kobetsu_emp:
+        raise HTTPException(status_code=404, detail="No employee assigned to this contract")
+
+    employee = kobetsu_emp.employee
+    factory = contract.factory
+
+    # Build data dictionary with employee info
+    data = _build_excel_document_data(contract, factory, [kobetsu_emp])
+    data.update(_build_employee_data(employee, kobetsu_emp))
+
+    xlsx_bytes = KobetsuExcelGenerator.generate_daicho(data)
+
+    emp_name = employee.full_name_kanji or employee.employee_number
+    filename = f"DAICHO_{emp_name}_{contract.contract_number}"
+
+    return _excel_response(xlsx_bytes, filename, format, subfolder="ledgers")
+
+
+@router.get("/excel2/{contract_id}/hakenmoto-daicho")
+async def generate_excel2_hakenmoto_daicho(
+    contract_id: int,
+    employee_id: Optional[int] = None,
+    format: str = Query("xlsx", description="Output format: 'xlsx' or 'pdf'"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate 派遣元管理台帳 (Dispatch Origin Registry) using NEW Excel generator (Sheet 4).
+
+    This is the source company's registry for tracking dispatched workers.
+    """
+    contract = db.query(KobetsuKeiyakusho).filter(
+        KobetsuKeiyakusho.id == contract_id
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    if employee_id:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id,
+            KobetsuEmployee.employee_id == employee_id
+        ).first()
+    else:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
+        ).first()
+
+    if not kobetsu_emp:
+        raise HTTPException(status_code=404, detail="No employee assigned to this contract")
+
+    employee = kobetsu_emp.employee
+    factory = contract.factory
+
+    data = _build_excel_document_data(contract, factory, [kobetsu_emp])
+    data.update(_build_employee_data(employee, kobetsu_emp))
+
+    xlsx_bytes = KobetsuExcelGenerator.generate_hakenmoto_daicho(data)
+
+    emp_name = employee.full_name_kanji or employee.employee_number
+    filename = f"派遣元管理台帳_{emp_name}_{contract.contract_number}"
+
+    return _excel_response(xlsx_bytes, filename, format, subfolder="ledgers")
+
+
+@router.get("/excel2/{contract_id}/shugyo-joken")
+async def generate_excel2_shugyo_joken(
+    contract_id: int,
+    employee_id: Optional[int] = None,
+    format: str = Query("xlsx", description="Output format: 'xlsx' or 'pdf'"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate 就業条件明示書 (Employment Conditions Statement) using NEW Excel generator (Sheet 5).
+
+    This document clarifies employment conditions for the dispatched worker.
+    """
+    contract = db.query(KobetsuKeiyakusho).filter(
+        KobetsuKeiyakusho.id == contract_id
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    if employee_id:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id,
+            KobetsuEmployee.employee_id == employee_id
+        ).first()
+    else:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
+        ).first()
+
+    if not kobetsu_emp:
+        raise HTTPException(status_code=404, detail="No employee assigned to this contract")
+
+    employee = kobetsu_emp.employee
+    factory = contract.factory
+
+    data = _build_excel_document_data(contract, factory, [kobetsu_emp])
+    data.update(_build_employee_data(employee, kobetsu_emp))
+
+    xlsx_bytes = KobetsuExcelGenerator.generate_shugyo_joken(data)
+
+    emp_name = employee.full_name_kanji or employee.employee_number
+    filename = f"就業条件明示書_{emp_name}_{contract.contract_number}"
+
+    return _excel_response(xlsx_bytes, filename, format, subfolder="conditions")
+
+
+@router.get("/excel2/{contract_id}/keiyakusho")
+async def generate_excel2_keiyakusho(
+    contract_id: int,
+    employee_id: Optional[int] = None,
+    format: str = Query("xlsx", description="Output format: 'xlsx' or 'pdf'"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Generate 契約書 (Employment Contract) using NEW Excel generator (Sheet 6).
+
+    This is the employment contract document between the dispatch company and worker.
+    """
+    contract = db.query(KobetsuKeiyakusho).filter(
+        KobetsuKeiyakusho.id == contract_id
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    if employee_id:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id,
+            KobetsuEmployee.employee_id == employee_id
+        ).first()
+    else:
+        kobetsu_emp = db.query(KobetsuEmployee).filter(
+            KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
+        ).first()
+
+    if not kobetsu_emp:
+        raise HTTPException(status_code=404, detail="No employee assigned to this contract")
+
+    employee = kobetsu_emp.employee
+    factory = contract.factory
+
+    data = _build_excel_document_data(contract, factory, [kobetsu_emp])
+    data.update(_build_employee_data(employee, kobetsu_emp))
+    data["contract_date"] = contract.contract_date
+    data["contract_start_date"] = contract.dispatch_start_date
+    data["contract_end_date"] = contract.dispatch_end_date
+
+    xlsx_bytes = KobetsuExcelGenerator.generate_keiyakusho(data)
+
+    emp_name = employee.full_name_kanji or employee.employee_number
+    filename = f"契約書_{emp_name}_{contract.contract_number}"
+
+    return _excel_response(xlsx_bytes, filename, format, subfolder="contracts")
+
+
+def _build_excel_document_data(contract: KobetsuKeiyakusho, factory, kobetsu_employees: list) -> dict:
+    """
+    Build common data dictionary for all Excel-based documents.
+    """
+    return {
+        # Company and factory info
+        "company_name": factory.company_name if factory else contract.worksite_name,
+        "company_address": factory.company_address if factory else "",
+        "factory_name": factory.plant_name if factory else "",
+        "factory_address": factory.plant_address if factory else "",
+        "department": factory.organizational_unit if factory and hasattr(factory, 'organizational_unit') else "",
+        "line": "",
+
+        # Worksite info
+        "worksite_name": contract.worksite_name or (f"{factory.company_name} {factory.plant_name}" if factory else ""),
+        "worksite_address": contract.worksite_address or (factory.plant_address if factory else ""),
+        "organizational_unit": contract.organizational_unit or "",
+
+        # Supervisor info
+        "supervisor_name": contract.supervisor_name or "",
+        "supervisor_department": contract.supervisor_department or "",
+        "supervisor_position": contract.supervisor_position or "",
+
+        # Manufacturing manager (派遣先責任者)
+        "mfg_manager_name": contract.haken_saki_manager.get('name', '') if contract.haken_saki_manager else "",
+        "mfg_manager_department": contract.haken_saki_manager.get('department', '') if contract.haken_saki_manager else "",
+        "mfg_manager_position": contract.haken_saki_manager.get('position', '') if contract.haken_saki_manager else "",
+
+        # Complaint handlers
+        "complaint_handler_name": contract.haken_saki_complaint_contact.get('name', '') if contract.haken_saki_complaint_contact else "",
+        "complaint_handler_dept": contract.haken_saki_complaint_contact.get('department', '') if contract.haken_saki_complaint_contact else "",
+        "complaint_handler_pos": contract.haken_saki_complaint_contact.get('position', '') if contract.haken_saki_complaint_contact else "",
+        "client_complaint_handler": contract.haken_saki_complaint_contact.get('name', '') if contract.haken_saki_complaint_contact else "",
+
+        # Work content
+        "work_content": contract.work_content or "機械オペレーター及び機械メンテナンス他付随する業務",
+
+        # Dispatch period
+        "dispatch_start_date": contract.dispatch_start_date,
+        "dispatch_end_date": contract.dispatch_end_date,
+        "num_workers": contract.number_of_workers or 1,
+
+        # Work schedule
+        "work_days_text": _format_work_days(contract.work_days) if contract.work_days else "月～金（祝日、年末年始、夏季休業を除く。）",
+        "work_start_time": contract.work_start_time.strftime("%H:%M") if contract.work_start_time else "08:00",
+        "work_end_time": contract.work_end_time.strftime("%H:%M") if contract.work_end_time else "17:00",
+        "work_hours_text": f"{contract.work_start_time.strftime('%H:%M') if contract.work_start_time else '08:00'} ～ {contract.work_end_time.strftime('%H:%M') if contract.work_end_time else '17:00'}",
+        "break_duration_minutes": contract.break_time_minutes or 60,
+        "break_time_text": f"{contract.break_time_minutes or 60}分",
+
+        # Overtime
+        "overtime_hours_per_day": float(contract.overtime_max_hours_day) if contract.overtime_max_hours_day else 4,
+        "overtime_hours_per_month": float(contract.overtime_max_hours_month) if contract.overtime_max_hours_month else 45,
+        "overtime_text": f"1日{float(contract.overtime_max_hours_day) if contract.overtime_max_hours_day else 4}時間、1ヶ月{float(contract.overtime_max_hours_month) if contract.overtime_max_hours_month else 45}時間を限度とする",
+        "holidays_text": "土曜日、日曜日、祝日、年末年始、夏季休暇",
+
+        # Rates
+        "hourly_rate": float(contract.hourly_rate) if contract.hourly_rate else 1700,
+        "payment_date": "翌月25日",
+
+        # Restriction date
+        "restriction_date": factory.conflict_date.strftime("%Y年%m月%d日") if factory and factory.conflict_date else "",
+
+        # Issue/created dates
+        "issue_date": date.today(),
+        "created_date": date.today(),
+        "dispatch_date_text": date.today().strftime("%Y年%m月%d日"),
+    }
+
+
+def _build_employee_data(employee, kobetsu_emp) -> dict:
+    """
+    Build employee-specific data for documents.
+    """
+    return {
+        "employee_name": employee.full_name_kanji or employee.full_name_kana or "",
+        "employee_katakana": employee.full_name_kana or "",
+        "employee_number": employee.employee_number or "",
+        "employee_dob": employee.date_of_birth,
+        "employee_gender": employee.gender or "",
+        "employee_address": employee.address or "",
+        "employee_phone": employee.phone_number or "",
+
+        # Work location for keiyakusho
+        "work_location": f"{kobetsu_emp.kobetsu_keiyakusho.worksite_name}" if kobetsu_emp and kobetsu_emp.kobetsu_keiyakusho else "",
+    }
 
 
 @router.get("/excel/{contract_id}/tsuchisho")

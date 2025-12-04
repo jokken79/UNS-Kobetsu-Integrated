@@ -125,11 +125,13 @@ class FactoryBase(BaseModel):
 
     # 派遣先責任者
     client_responsible_department: Optional[str] = None
+    client_responsible_position: Optional[str] = None
     client_responsible_name: Optional[str] = None
     client_responsible_phone: Optional[str] = None
 
     # 派遣先苦情処理担当者
     client_complaint_department: Optional[str] = None
+    client_complaint_position: Optional[str] = None
     client_complaint_name: Optional[str] = None
     client_complaint_phone: Optional[str] = None
 
@@ -204,6 +206,23 @@ class FactoryBase(BaseModel):
 
     # 協定
     agreement_period: Optional[date] = None
+    agreement_explainer: Optional[str] = None
+
+    # 契約期間
+    contract_start_date: Optional[date] = None
+    contract_end_date: Optional[date] = None
+
+    # 時間単位
+    time_unit_minutes: Optional[Decimal] = Field(None, ge=0, le=60)
+
+    # 労働者支払条件
+    worker_closing_date: Optional[str] = None
+    worker_payment_date: Optional[str] = None
+    worker_calendar: Optional[str] = None
+
+    # 特別条項 (時間外)
+    overtime_special_max_month: Optional[Decimal] = Field(None, ge=0, le=200)
+    overtime_special_count_year: Optional[int] = Field(None, ge=0, le=100)
 
     notes: Optional[str] = None
 
@@ -240,13 +259,61 @@ class FactoryCreate(FactoryBase):
 
 class FactoryUpdate(BaseModel):
     """Schema for updating a factory."""
+    # 派遣先情報
     company_name: Optional[str] = None
     company_address: Optional[str] = None
     company_phone: Optional[str] = None
+    company_fax: Optional[str] = None
+
+    # 派遣先責任者
+    client_responsible_department: Optional[str] = None
+    client_responsible_position: Optional[str] = None
+    client_responsible_name: Optional[str] = None
+    client_responsible_phone: Optional[str] = None
+
+    # 派遣先苦情処理担当者
+    client_complaint_department: Optional[str] = None
+    client_complaint_position: Optional[str] = None
+    client_complaint_name: Optional[str] = None
+    client_complaint_phone: Optional[str] = None
+
+    # 工場情報
     plant_name: Optional[str] = None
     plant_address: Optional[str] = None
+    plant_phone: Optional[str] = None
+
+    # 派遣元情報
+    dispatch_responsible_department: Optional[str] = None
+    dispatch_responsible_name: Optional[str] = None
+    dispatch_responsible_phone: Optional[str] = None
+    dispatch_complaint_department: Optional[str] = None
+    dispatch_complaint_name: Optional[str] = None
+    dispatch_complaint_phone: Optional[str] = None
+
+    # スケジュール
+    work_hours_description: Optional[str] = None
+    break_time_description: Optional[str] = None
+    calendar_description: Optional[str] = None
+    day_shift_start: Optional[time] = None
+    day_shift_end: Optional[time] = None
+    night_shift_start: Optional[time] = None
+    night_shift_end: Optional[time] = None
+    break_minutes: Optional[int] = Field(None, ge=0, le=180)
+
+    # 時間外労働
+    overtime_description: Optional[str] = None
+    overtime_max_hours_day: Optional[Decimal] = Field(None, ge=0, le=24)
+    overtime_max_hours_month: Optional[Decimal] = Field(None, ge=0, le=200)
+    overtime_max_hours_year: Optional[int] = Field(None, ge=0, le=2000)
+    overtime_special_max_month: Optional[Decimal] = Field(None, ge=0, le=200)
+    overtime_special_count_year: Optional[int] = Field(None, ge=0, le=100)
+
+    # 休日労働
+    holiday_work_description: Optional[str] = None
+    holiday_work_max_days_month: Optional[int] = Field(None, ge=0, le=31)
+
+    # 抵触日
     conflict_date: Optional[date] = None
-    agreement_period: Optional[date] = None
 
     # Contract cycle configuration
     contract_cycle_type: Optional[ContractCycleTypeEnum] = None
@@ -254,6 +321,27 @@ class FactoryUpdate(BaseModel):
     fiscal_year_end_month: Optional[int] = Field(None, ge=1, le=12)
     fiscal_year_end_day: Optional[int] = Field(None, ge=1, le=31)
     contract_renewal_days_before: Optional[int] = Field(None, ge=0, le=365)
+
+    # 契約期間
+    contract_start_date: Optional[date] = None
+    contract_end_date: Optional[date] = None
+
+    # 時間単位
+    time_unit_minutes: Optional[Decimal] = Field(None, ge=0, le=60)
+
+    # 支払条件
+    closing_date: Optional[str] = None
+    payment_date: Optional[str] = None
+    bank_account: Optional[str] = None
+
+    # 労働者支払条件
+    worker_closing_date: Optional[str] = None
+    worker_payment_date: Optional[str] = None
+    worker_calendar: Optional[str] = None
+
+    # 協定
+    agreement_period: Optional[date] = None
+    agreement_explainer: Optional[str] = None
 
     is_active: Optional[bool] = None
     notes: Optional[str] = None

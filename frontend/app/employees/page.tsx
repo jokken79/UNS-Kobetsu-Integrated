@@ -4,7 +4,7 @@ import { SkeletonStats, SkeletonTable } from '@/components/common/Skeleton'
 import { employeeApi } from '@/lib/api'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 export default function EmployeesPage() {
   const router = useRouter()
@@ -13,6 +13,60 @@ export default function EmployeesPage() {
   const [companyFilter, setCompanyFilter] = useState<string>('')
   const [departmentFilter, setDepartmentFilter] = useState<string>('')
   const [lineFilter, setLineFilter] = useState<string>('')
+  const [columnWidths, setColumnWidths] = useState<Record<number, string>>({})
+  const headerRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Load saved column widths from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('employeeColumnWidths')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setColumnWidths(parsed)
+      } catch (e) {
+        console.error('Failed to parse saved column widths', e)
+      }
+    }
+  }, [])
+
+  // Save column widths to localStorage when they change
+  useEffect(() => {
+    if (Object.keys(columnWidths).length > 0) {
+      localStorage.setItem('employeeColumnWidths', JSON.stringify(columnWidths))
+    }
+  }, [columnWidths])
+
+  // Setup ResizeObserver to detect width changes
+  useEffect(() => {
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach(entry => {
+        const target = entry.target as HTMLDivElement
+        const index = headerRefs.current.indexOf(target)
+        if (index !== -1) {
+          const newWidth = `${target.offsetWidth}px`
+          setColumnWidths(prev => ({ ...prev, [index]: newWidth }))
+        }
+      })
+    })
+
+    headerRefs.current.forEach(ref => {
+      if (ref) observer.observe(ref)
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, []) // depends on headerRefs which is stable
+
+  // Apply saved widths to headers after mount and when columnWidths changes
+  useEffect(() => {
+    headerRefs.current.forEach((ref, index) => {
+      if (ref && columnWidths[index]) {
+        ref.style.width = columnWidths[index]
+        ref.style.minWidth = columnWidths[index]
+      }
+    })
+  }, [columnWidths])
 
   // Fetch employees
   const { data: employees = [], isLoading } = useQuery({
@@ -361,38 +415,104 @@ export default function EmployeesPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    社員番号
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    <div
+                      ref={el => headerRefs.current[0] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[0] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      社員番号
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    氏名
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                    <div
+                      ref={el => headerRefs.current[1] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[1] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      氏名
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    国籍
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                    <div
+                      ref={el => headerRefs.current[2] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[2] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      国籍
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    年齢
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                    <div
+                      ref={el => headerRefs.current[3] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[3] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      年齢
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    時給
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                    <div
+                      ref={el => headerRefs.current[4] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[4] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      時給
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    単価
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                    <div
+                      ref={el => headerRefs.current[5] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[5] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      単価
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    派遣先
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                    <div
+                      ref={el => headerRefs.current[6] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[6] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      派遣先
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    配属先
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    <div
+                      ref={el => headerRefs.current[7] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[7] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      配属先
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    配属ライン
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    <div
+                      ref={el => headerRefs.current[8] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[8] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      配属ライン
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    仕事内容
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                    <div
+                      ref={el => headerRefs.current[9] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[9] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      仕事内容
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]" style={{ resize: 'horizontal', overflow: 'auto', cursor: 'col-resize' }}>
-                    ステータス
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    <div
+                      ref={el => headerRefs.current[10] = el}
+                      className="resizable-header"
+                      style={{ resize: 'horizontal', overflow: 'hidden', cursor: 'col-resize', display: 'block', width: columnWidths[10] || '100%', minHeight: '1.5em', borderRight: '2px solid transparent' }}
+                    >
+                      ステータス
+                    </div>
                   </th>
                 </tr>
               </thead>
