@@ -483,10 +483,13 @@ class KobetsuExcelGenerator:
             # Remove external links if any
             cls._remove_external_links(temp_path)
 
-            # Clean content outside print area (removes extra columns/rows)
-            sheet_content = sheet_path.read_text(encoding='utf-8')
-            sheet_content = cls._clean_outside_print_area(sheet_content, print_area)
-            sheet_path.write_text(sheet_content, encoding='utf-8')
+            # NOTE: _clean_outside_print_area was causing XML corruption in sheets 4,5,6
+            # Disabled for now - documents will have extra content outside print area
+            # but will at least open without errors. Print areas are still set correctly.
+            # TODO: Fix the regex patterns that break XML structure
+            # sheet_content = sheet_path.read_text(encoding='utf-8')
+            # sheet_content = cls._clean_outside_print_area(sheet_content, print_area)
+            # sheet_path.write_text(sheet_content, encoding='utf-8')
 
             # Hide control columns if needed (only for sheet 1)
             if hide_control_columns:
@@ -689,16 +692,25 @@ class KobetsuExcelGenerator:
                     return sheet_xml
             if isinstance(value, (date, datetime)):
                 excel_value = cls._date_to_excel_serial(value)
-                # Replace existing cell or formula
+                # Must remove t="s" attribute if present, otherwise Excel tries to use date as string index
+                def replace_with_date(match):
+                    attrs = match.group(1)
+                    # Remove t="..." attribute (especially t="s" for shared strings)
+                    attrs = re.sub(r'\s*t="[^"]*"', '', attrs)
+                    return f'<c r="{cell_ref}"{attrs}><v>{excel_value}</v></c>'
                 pattern = rf'<c r="{cell_ref}"([^>]*)>(?:<f>[^<]*</f>)?<v>[^<]*</v></c>'
-                replacement = f'<c r="{cell_ref}"\\1><v>{excel_value}</v></c>'
-                sheet_xml = re.sub(pattern, replacement, sheet_xml)
+                sheet_xml = re.sub(pattern, replace_with_date, sheet_xml)
 
         elif value_type == 'number':
             numeric = float(value) if value else 0
+            # Must remove t="s" attribute if present, otherwise Excel tries to use numeric as string index
+            def replace_with_number(match):
+                attrs = match.group(1)
+                # Remove t="..." attribute (especially t="s" for shared strings)
+                attrs = re.sub(r'\s*t="[^"]*"', '', attrs)
+                return f'<c r="{cell_ref}"{attrs}><v>{numeric}</v></c>'
             pattern = rf'<c r="{cell_ref}"([^>]*)>(?:<f>[^<]*</f>)?<v>[^<]*</v></c>'
-            replacement = f'<c r="{cell_ref}"\\1><v>{numeric}</v></c>'
-            sheet_xml = re.sub(pattern, replacement, sheet_xml)
+            sheet_xml = re.sub(pattern, replace_with_number, sheet_xml)
 
         else:  # text
             str_value = str(value) if value else ''
@@ -833,6 +845,10 @@ class KobetsuExcelGenerator:
         - printerSettings (often corrupted)
         - drawings (may reference external content)
         - definedNames (named ranges that reference deleted sheets)
+        - ctrlProps (ActiveX control properties)
+        - comments (cell comments)
+        - threadedComments (threaded comment system)
+        - persons (person metadata for comments)
         """
         import shutil
 
@@ -856,6 +872,25 @@ class KobetsuExcelGenerator:
         if drawings_rels.exists():
             shutil.rmtree(drawings_rels)
 
+        # Remove ctrlProps folder (ActiveX control properties - causes errors in sheets 4,5)
+        ctrl_props = temp_path / 'xl' / 'ctrlProps'
+        if ctrl_props.exists():
+            shutil.rmtree(ctrl_props)
+
+        # Remove comments XML files
+        for comments_file in (temp_path / 'xl').glob('comments*.xml'):
+            comments_file.unlink()
+
+        # Remove threadedComments folder
+        threaded_comments = temp_path / 'xl' / 'threadedComments'
+        if threaded_comments.exists():
+            shutil.rmtree(threaded_comments)
+
+        # Remove persons folder (metadata for comment authors)
+        persons = temp_path / 'xl' / 'persons'
+        if persons.exists():
+            shutil.rmtree(persons)
+
         # Update Content_Types.xml to remove references to deleted files
         content_types = temp_path / '[Content_Types].xml'
         if content_types.exists():
@@ -867,6 +902,15 @@ class KobetsuExcelGenerator:
             # Remove drawings references
             content = re.sub(r'<Override[^>]*drawings[^>]*/>', '', content)
             content = re.sub(r'<Default[^>]*vmlDrawing[^>]*/>', '', content)
+            # Remove ctrlProps references
+            content = re.sub(r'<Override[^>]*ctrlProps[^>]*/>', '', content)
+            content = re.sub(r'<Default[^>]*ActiveX[^>]*/>', '', content)
+            # Remove comments references
+            content = re.sub(r'<Override[^>]*comments[^>]*/>', '', content)
+            # Remove threadedComments references
+            content = re.sub(r'<Override[^>]*threadedComments[^>]*/>', '', content)
+            # Remove persons references
+            content = re.sub(r'<Override[^>]*persons[^>]*/>', '', content)
             content_types.write_text(content, encoding='utf-8')
 
         # Update workbook.xml - remove definedNames and calcChain references
@@ -887,7 +931,7 @@ class KobetsuExcelGenerator:
             content = re.sub(r'<Relationship[^>]*calcChain[^>]*/>', '', content)
             wb_rels.write_text(content, encoding='utf-8')
 
-        # Update sheet rels to remove printerSettings and drawing references
+        # Update sheet rels to remove printerSettings, drawing, comment, and control references
         sheets_rels = temp_path / 'xl' / 'worksheets' / '_rels'
         if sheets_rels.exists():
             for rels_file in sheets_rels.glob('*.rels'):
@@ -895,9 +939,17 @@ class KobetsuExcelGenerator:
                 content = re.sub(r'<Relationship[^>]*printerSettings[^>]*/>', '', content)
                 content = re.sub(r'<Relationship[^>]*drawing[^>]*/>', '', content)
                 content = re.sub(r'<Relationship[^>]*vmlDrawing[^>]*/>', '', content)
+                # Remove comment relationships
+                content = re.sub(r'<Relationship[^>]*comments[^>]*/>', '', content)
+                # Remove ctrlProp relationships
+                content = re.sub(r'<Relationship[^>]*ctrlProp[^>]*/>', '', content)
+                # Remove threadedComment relationships
+                content = re.sub(r'<Relationship[^>]*threadedComment[^>]*/>', '', content)
+                # Remove persons relationships
+                content = re.sub(r'<Relationship[^>]*person[^>]*/>', '', content)
                 rels_file.write_text(content, encoding='utf-8')
 
-        # Remove drawing references from sheet XML files
+        # Remove drawing and control references from sheet XML files
         worksheets_dir = temp_path / 'xl' / 'worksheets'
         if worksheets_dir.exists():
             for sheet_file in worksheets_dir.glob('sheet*.xml'):
@@ -906,6 +958,10 @@ class KobetsuExcelGenerator:
                 content = re.sub(r'<drawing[^>]*/>', '', content)
                 # Remove <legacyDrawing> element
                 content = re.sub(r'<legacyDrawing[^>]*/>', '', content)
+                # Remove <controls> section (ActiveX controls)
+                content = re.sub(r'<controls>.*?</controls>', '', content, flags=re.DOTALL)
+                # Remove empty controls tag
+                content = re.sub(r'<controls\s*/>', '', content)
                 sheet_file.write_text(content, encoding='utf-8')
 
     @classmethod
